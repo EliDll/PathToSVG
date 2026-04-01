@@ -1,17 +1,17 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\elias\\source\\repos\\PathToSVG\\",
+  "WorkspaceRootPath": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|c:\\users\\elias\\source\\repos\\pathtosvg\\pathtosvg\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|d:\\dokumente\\1a_private_projects\\pathtosvg\\pathtosvg\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|solutionrelative:pathtosvg\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|c:\\users\\elias\\source\\repos\\pathtosvg\\pathtosvg\\util.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|d:\\dokumente\\1a_private_projects\\pathtosvg\\pathtosvg\\util.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|solutionrelative:pathtosvg\\util.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|c:\\users\\elias\\source\\repos\\pathtosvg\\pathtosvg\\types.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|d:\\dokumente\\1a_private_projects\\pathtosvg\\pathtosvg\\types.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{37832D50-0F91-4ED8-B5F5-2405F0F9BA8E}|PathToSVG\\PathToSVG.csproj|solutionrelative:pathtosvg\\types.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -36,37 +36,35 @@
               "$type": "Document",
               "DocumentIndex": 1,
               "Title": "Util.cs",
-              "DocumentMoniker": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Util.cs",
+              "DocumentMoniker": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Util.cs",
               "RelativeDocumentMoniker": "PathToSVG\\Util.cs",
-              "ToolTip": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Util.cs",
+              "ToolTip": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Util.cs",
               "RelativeToolTip": "PathToSVG\\Util.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAuwAoAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-01T17:44:23.029Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-01T17:44:23.029Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
               "Title": "Types.cs",
-              "DocumentMoniker": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Types.cs",
+              "DocumentMoniker": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Types.cs",
               "RelativeDocumentMoniker": "PathToSVG\\Types.cs",
-              "ToolTip": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Types.cs",
+              "ToolTip": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Types.cs",
               "RelativeToolTip": "PathToSVG\\Types.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAABOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-01T17:36:35.813Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-01T17:36:35.813Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Program.cs",
+              "DocumentMoniker": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Program.cs",
               "RelativeDocumentMoniker": "PathToSVG\\Program.cs",
-              "ToolTip": "C:\\Users\\elias\\source\\repos\\PathToSVG\\PathToSVG\\Program.cs",
+              "ToolTip": "D:\\Dokumente\\1a_Private_Projects\\PathToSVG\\PathToSVG\\Program.cs",
               "RelativeToolTip": "PathToSVG\\Program.cs",
-              "ViewState": "AgIAANUAAAAAAAAAAAAAANcAAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAANUAAAAAAAAAAAAAAOAAAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-01T17:24:43.786Z",
               "EditorCaption": ""
