@@ -1,4 +1,4 @@
-#3D Path Projection to SVG w/ Measurements
+# (3D) Path Projection to Optimized Viewplane SVG w/ Measurements
 
 ![output](https://github.com/user-attachments/assets/4e44768b-6a3a-40d0-88db-270a2bc5bd51)
 <?xml version="1.0" encoding="utf-8" ?>
