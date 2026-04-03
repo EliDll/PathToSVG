@@ -3,13 +3,15 @@ using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using Types;
 using Utils;
+using static System.Net.Mime.MediaTypeNames;
 
 #nullable enable
 
+// Output path for the SVG file
+string outputPath = "./output.svg";
+
 var len = 300;
 var arcRadius = 30;
-var pathWidth = 4;
-var margin = pathWidth * 4;
 
 var rightVec = new Vector3(1, 0, 0);
 var leftVec = rightVec * -1;
@@ -18,237 +20,206 @@ var downVec = upVec * -1;
 var inVec = new Vector3(0, 1, 0);
 var outVec = inVec * -1;
 
-Path3D path = new([
-    new Line(new(0,0,0), new(len-arcRadius,0,0)),
-    new Arc(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: 90),
-    new Line(new(len,0,arcRadius), new(len,0,len- arcRadius)),
-    new Arc(Start: new(len,0,len- arcRadius), End: new(len, arcRadius, len), Center: new(len, arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 90),
-    new Line(new(len,arcRadius,len), new(len,len-arcRadius,len)),
-    new Arc(Start: new(len,len - arcRadius,len), End: new(len, len, len-arcRadius), Center: new(len, len-arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 470),
-    new Line(new(len,len,len-arcRadius), new(len,len,arcRadius)),
-    new Arc(Start: new(len,len, arcRadius), End: new(len+arcRadius, len, 0), Center: new(len+arcRadius, len, arcRadius), Axis: inVec, SweepDeg: 90),
-    new Line(new(len+arcRadius, len, 0), new(len*2,len,0)),
-]);
+Path3D test3D = new(Pieces: [
+     new Line3D(new(-len*0.5f,0,len*0.5f), new(0,0,0)),
+    new Line3D(new(0,0,0), new(len-arcRadius,0,0)),
+    new Arc3D(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: 90),
+    new Line3D(new(len,0,arcRadius), new(len,0,len- arcRadius)),
+    new Arc3D(Start: new(len,0,len- arcRadius), End: new(len, arcRadius, len), Center: new(len, arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 90),
+    new Line3D(new(len,arcRadius,len), new(len,len-arcRadius,len)),
+    new Arc3D(Start: new(len,len - arcRadius,len), End: new(len, len, len-arcRadius), Center: new(len, len-arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 470),
+    new Line3D(new(len,len,len-arcRadius), new(len,len,arcRadius)),
+    new Arc3D(Start: new(len,len, arcRadius), End: new(len+arcRadius, len, 0), Center: new(len+arcRadius, len, arcRadius), Axis: inVec, SweepDeg: 90),
+    new Line3D(new(len+arcRadius, len, 0), new(len*2,len,0)),
+],
+Diameter: 6
+);
 
+Path3D testCage = new(Pieces: [
+    new Line3D(new(len*0.75f, 0, len*0.75f), new(len, 0, len)),
+    new Line3D( new(len, 0, len), new(len, 0, arcRadius)),
+    new Arc3D(Start: new(len,0,arcRadius), End:  new(len-arcRadius, 0, 0), Center: new(len-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: -90),
+    new Line3D( new(len-arcRadius, 0, 0), new(-arcRadius, 0, 0)),
+    new Arc3D(Start: new(-arcRadius, 0, 0), End:  new(-arcRadius*2, 0, arcRadius), Center: new(-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: -90),
+    new Line3D( new(-arcRadius*2, 0, arcRadius), new(-arcRadius*2, 0, len-arcRadius)),
+    new Arc3D(Start:   new(-arcRadius*2, 0, len-arcRadius), End:  new(0, 0, len-arcRadius), Center: new(-arcRadius, 0, len-arcRadius), Axis: inVec, SweepDeg: -180),
+    new Line3D( new(0, 0, len-arcRadius), new(0, 0, len-arcRadius*3)),
+    new Arc3D(Start: new(0, 0, len-arcRadius*3), End:   new(arcRadius, 0, len-arcRadius*4), Center: new(arcRadius, 0,  len-arcRadius*3), Axis: inVec, SweepDeg: 90),
+    new Line3D( new(arcRadius, 0, len-arcRadius*4), new(arcRadius*3, 0, len-arcRadius*4)),
+],
+Diameter: 8
+);
 
-// Output path for the SVG file
-string outputPath = "./output.svg";
+Path3D testOddAngles = new(Pieces: [
+    new Line3D(new(0,0,len), new(len,0,0)),
+    new Line3D(new(len,0,0),new(len*3,0,0)),
+    new Line3D(new(len*3,0,0),new(len*4,0,len))
+],
+Diameter: 8
+);
 
-// Define canvas size
-float width = (float)len * 3 + margin * 2;
-float height = (float)len * 3 + margin * 2;
+var view = View.Front;
 
-// Create an SVG canvas using SKSvgCanvas
-using (var stream = new SKFileWStream(outputPath))
-using (var canvas = SKSvgCanvas.Create(new SKRect(0, 0, width, height), stream))
+var degreesPerSample = 5.0f;
+
+var preferLongestLine = true;
+
+var path = testCage;
+
+var imagePath = path.ToImagePath(view, preferLongestLine, degreesPerSample);
+
+var bounds = imagePath.GetBounds();
+
+var textPercentage = 0.03f;
+var textWidthFraction = bounds.Range.Y * textPercentage;
+var textHeightFraction = bounds.Range.X * textPercentage;
+
+using var textFont = new SKFont
 {
-    using var bgPaint = new SKPaint
+    Size = Math.Max(textWidthFraction, textHeightFraction),
+};
+
+var measureLinesPercentage = 0.005f;
+var measureLinesWidhtFraction = bounds.Range.Y * measureLinesPercentage;
+var measureLinesHeightFraction = bounds.Range.X * measureLinesPercentage;
+
+using var measurePaint = new SKPaint
+{
+    Color = new SKColor(0, 220, 255),
+    StrokeWidth = Math.Max(measureLinesWidhtFraction, measureLinesHeightFraction),
+};
+
+var margin = new Margin(
+    Left: measurePaint.StrokeWidth,
+    Top: bounds.Range.Y > imagePath.Diameter ? textFont.Size + measurePaint.StrokeWidth * 2 : measurePaint.StrokeWidth,
+    Right: bounds.Range.Y > imagePath.Diameter ? measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth,
+    Bottom: bounds.Range.X > imagePath.Diameter ? textFont.Size + measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth
+    );
+
+var canvasRect = new SKRect(0, 0, bounds.Range.X + margin.Left + margin.Right, bounds.Range.Y + margin.Top + margin.Bottom);
+
+using (var stream = new SKFileWStream(outputPath))
+using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
+{
+    using var backgroundPaint = new SKPaint
     {
-        Color = new SKColor(30, 30, 60),
+        Color = new SKColor(50, 50, 80),
         Style = SKPaintStyle.Fill
     };
-    canvas.DrawRect(0, 0, width, height, bgPaint);
 
-    IList<Line> lines = path.segments.Where(x => x is Line).Select(x => (Line)x).ToList();
-
-    var lineDirs = lines.Select(x => x.End - x.Start).ToList();
-    var projectionXAxis = lineDirs.Count > 0 ? Vector3.Normalize(lineDirs[0]) : new Vector3(1, 0, 0); //world forward as fallback
-
-    var eps = 1e-6f;
-
-    //Orthonormal basis via Gram-Schmidt
-    var projectionYAxisCandidates = lineDirs.Select(x => Vector3.Normalize(x - Vector3.Dot(x, projectionXAxis) * projectionXAxis))
-        .Where(x => x.Length() > eps).ToList();
-
-    var projectionYAxis = projectionYAxisCandidates.Count > 0 ? projectionYAxisCandidates[0] : new Vector3(0, 0, 1); //world up as fallback
-    var projectionZAxis = Vector3.Cross(projectionYAxis, projectionXAxis); // no need to normalize, already unit length
-
-    var view = View.Front;
-
-    Vector3 Project(Vector3 p)
+    using var marginPaint = new SKPaint
     {
-        return view switch
-        {
-            View.Front => new Vector3(
-            Vector3.Dot(p, projectionXAxis) + margin,
-            height - Vector3.Dot(p, projectionYAxis) - margin,
-            Vector3.Dot(p, projectionZAxis)
-            ),
-            View.Side => new Vector3(
-            Vector3.Dot(p, projectionZAxis) + margin,
-            height - Vector3.Dot(p, projectionYAxis) - margin,
-            Vector3.Dot(p, projectionXAxis)
-            ),
-            View.Top => new Vector3(
-            Vector3.Dot(p, projectionXAxis) + margin,
-            height - Vector3.Dot(p, projectionZAxis) - margin,
-            Vector3.Dot(p, projectionYAxis)
-            ),
-            _ => throw new NotImplementedException()
-        };
-    }
+        Color = new SKColor(100, 100, 130),
+        IsAntialias = true
+    };
 
-    using var red = new SKPaint
+    using var linePaint = new SKPaint
     {
         Color = new SKColor(255, 0, 0),
-        StrokeWidth = pathWidth,
-        IsAntialias = true
+        StrokeWidth = imagePath.Diameter,
+        IsAntialias = true,
     };
 
-    using var green = new SKPaint
+    using var arcPaint = new SKPaint
     {
         Color = new SKColor(0, 255, 0),
-        StrokeWidth = pathWidth,
+        StrokeWidth = imagePath.Diameter,
         IsAntialias = true,
         StrokeCap = SKStrokeCap.Round,
     };
 
-    using var blue = new SKPaint
+    using var markerPaint = new SKPaint
     {
-        Color = new SKColor(0, 100, 255),
-        StrokeWidth = pathWidth,
-        IsAntialias = true,
-        StrokeCap = SKStrokeCap.Round,
-    };
-
-    using var backdropPaint = new SKPaint
-    {
-        Color = new SKColor(50, 50, 50),
-        StrokeWidth = pathWidth,
+        Color = new SKColor(255, 255, 0),
         IsAntialias = true
     };
 
-    using var angleFont = new SKFont
-    {
-        Size = pathWidth * 4
-    };
+    #region Draw Backgrounds
+    canvas.DrawRect(canvasRect, backgroundPaint);
+    canvas.DrawRect(margin.Left, margin.Top, bounds.Range.X, bounds.Range.Y, marginPaint);
+    #endregion
 
-    IList<Vector3> bounds = [];
+    #region Draw Measurements
+    var halfStrokeWidth = measurePaint.StrokeWidth * 0.5f;
+    var capWidth = measurePaint.StrokeWidth * 4f;
+    var halfCapWidth = capWidth * 0.5f;
 
-    for (int segIdx = 0; segIdx < path.segments.Count; segIdx++)
+    var fullWidth = margin.Left + bounds.Range.X + margin.Right;
+    var fullHeight = margin.Top + bounds.Range.Y + margin.Bottom;
+
+    var xLineHeight = margin.Top + bounds.Range.Y + halfCapWidth + measurePaint.StrokeWidth;
+    var yLineWidth = margin.Left + bounds.Range.X + halfCapWidth + measurePaint.StrokeWidth;
+
+    if (bounds.Range.X > imagePath.Diameter)
     {
-        var segment = path.segments[segIdx];
-        if (segment is Line line)
+        var rangeXStart = new SKPoint(margin.Left, xLineHeight);
+        var rangeXEnd = new SKPoint(margin.Left + bounds.Range.X, xLineHeight);
+        canvas.DrawLine(rangeXStart, rangeXEnd, measurePaint);
+
+        canvas.DrawLine(rangeXStart + new SKPoint(halfStrokeWidth, halfCapWidth), rangeXStart + new SKPoint(halfStrokeWidth, -halfCapWidth), measurePaint);
+        canvas.DrawLine(rangeXEnd + new SKPoint(-halfStrokeWidth, halfCapWidth), rangeXEnd + new SKPoint(-halfStrokeWidth, -halfCapWidth), measurePaint);
+
+        canvas.DrawText($"X: {bounds.Range.X}", bounds.Range.X * 0.5f + margin.Left, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Center, textFont, measurePaint);
+    }
+
+    if (bounds.Range.Y > imagePath.Diameter)
+    {
+        var rangeYStart = new SKPoint(yLineWidth, margin.Top);
+        var rangeYEnd = new SKPoint(yLineWidth, margin.Top + bounds.Range.Y);
+        canvas.DrawLine(rangeYStart, rangeYEnd, measurePaint);
+        canvas.DrawLine(rangeYStart + new SKPoint(halfCapWidth, halfStrokeWidth), rangeYStart + new SKPoint(-halfCapWidth, halfStrokeWidth), measurePaint);
+        canvas.DrawLine(rangeYEnd + new SKPoint(halfCapWidth, -halfStrokeWidth), rangeYEnd + new SKPoint(-halfCapWidth, -halfStrokeWidth), measurePaint);
+
+        canvas.DrawText($"Y: {bounds.Range.Y}", fullWidth - measurePaint.StrokeWidth, textFont.Size + measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
+    }
+
+    if (bounds.Range.Z > imagePath.Diameter)
+    {
+        var markerCenter = new SKPoint(yLineWidth, xLineHeight);
+        canvas.DrawCircle(markerCenter, radius: halfCapWidth, measurePaint);
+        canvas.DrawCircle(markerCenter, radius: halfCapWidth - measurePaint.StrokeWidth, backgroundPaint);
+
+        canvas.DrawText($"Z: {bounds.Range.Z}", fullWidth - measurePaint.StrokeWidth, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
+    }
+    #endregion
+
+    #region Draw ImagePath
+    for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
+    {
+        var piece = imagePath.Pieces[pieceIdx];
+        if (piece is ImageLine line)
         {
-            var start = Project(line.Start);
-            var end = Project(line.End);
-            canvas.DrawLine(start.ToSKPoint(), end.ToSKPoint(), red);
+            canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), linePaint);
 
-            var lineLen = Vector3.Distance(line.End, line.Start);
-            var lineDir = Vector3.Normalize(line.End - line.Start);
-            var imageDir = Vector3.Normalize(end - start);
-            var mid = Project(line.Start + lineDir * (lineLen * 0.5f)).ToSKPoint();
-
-            bounds.Add(start);
-            bounds.Add(end);
-
-            var totalLen = lineLen;
-            if (segIdx != 0 && path.segments[segIdx - 1] is Arc startArc)
+            if (imagePath.Pieces.Count > 1)
             {
-                var outerRadius = Vector3.Distance(startArc.Start, startArc.Center) + (pathWidth * 0.5f);
-                var arcWidth = Util.GetArcWidth(outerRadius, startArc.SweepDeg);
-                totalLen += arcWidth;
-
-                bounds.Add(start - imageDir * arcWidth);
+                var imageCenter = line.ImageStart + (line.ImageEnd - line.ImageStart) * 0.5f;
+                var lineString = line.OuterLen3D != line.StraightLen3D ? $"{line.OuterLen3D.ToString("0.#")} ({line.StraightLen3D.ToString("0.#")})" : $"{line.OuterLen3D.ToString("0.#")}";
+                canvas.DrawText(lineString, imageCenter.ToSKPoint(bounds, margin), SKTextAlign.Center, textFont, arcPaint);
             }
-            if (segIdx != path.segments.Count - 1 && path.segments[segIdx + 1] is Arc endArc)
-            {
-                var outerRadius = Vector3.Distance(endArc.Start, endArc.Center) + (pathWidth * 0.5f);
-                var arcWidth = Util.GetArcWidth(outerRadius, endArc.SweepDeg);
-                totalLen += arcWidth;
-
-                bounds.Add(end + imageDir * arcWidth);
-            }
-
-            var lineString = totalLen != lineLen ? $"{totalLen} ({lineLen})" : $"{lineLen}";
-            canvas.DrawText(lineString, mid.X, mid.Y, SKTextAlign.Center, angleFont, green);
         }
-        else if (segment is Arc arc)
+        else if (piece is ImageArc arc)
         {
-            var sweepStartVec = arc.Start - arc.Center;
-            var sweepEndVec = arc.End - arc.Center;
-
-            IList<Vector3> sweepVecSamples = [sweepStartVec];
-            var sampleDegrees = 5.0f;
-            var currentDegrees = sampleDegrees;
-
-            while (currentDegrees < arc.SweepDeg)
+            for (int sampleIdx = 0; sampleIdx < arc.ImageSweepSamples.Count - 1; sampleIdx++)
             {
-                var sampleSweepVec = sweepStartVec.RotateAround(arc.Axis, -currentDegrees);
-                sweepVecSamples.Add(sampleSweepVec);
-                currentDegrees += sampleDegrees;
-            }
-            sweepVecSamples.Add(sweepEndVec);
-
-            for (int i = 0; i < sweepVecSamples.Count - 1; i++)
-            {
-                var startVec = sweepVecSamples[i];
-                var endVec = sweepVecSamples[i + 1];
-
-                var start = Project(arc.Center + startVec);
-                var end = Project(arc.Center + endVec);
-                canvas.DrawLine(start.ToSKPoint(), end.ToSKPoint(), green);
-
-                var startDir = Vector3.Normalize(startVec);
-                var endDir = Vector3.Normalize(endVec);
-
-                //Add outer diameter samples to bounds
-                bounds.Add(Project(arc.Center + startVec + startDir * (pathWidth * 0.5f)));
-                bounds.Add(Project(arc.Center + endVec + endDir * (pathWidth * 0.5f)));
+                var start = arc.ImageSweepSamples[sampleIdx];
+                var end = arc.ImageSweepSamples[sampleIdx + 1];
+                canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), arcPaint);
             }
 
-            var center = Project(arc.Center);
-
-            canvas.DrawCircle(center.X, center.Y, pathWidth, red);
-
-            var angleString = $"{arc.SweepDeg}°";
-            canvas.DrawText(angleString, center.X, center.Y + angleFont.Size * 0.5f, SKTextAlign.Center, angleFont, green);
+            var angleString = $"{Math.Abs(arc.Arc3D.SweepDeg).ToString("0.#")}°";
+            canvas.DrawText(angleString, arc.ImageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, textFont.Size * 0.5f), SKTextAlign.Center, textFont, linePaint);
         }
     }
+    #endregion
 
-    var boundsX = bounds.Select(b => b.X).DefaultIfEmpty(0);
-    var maxX = boundsX.Max();
-    var minX = boundsX.Min();
-    var rangeX = maxX - minX;
-    var midX = minX + rangeX * 0.5f;
-
-    var boundsY = bounds.Select(b => b.Y).DefaultIfEmpty(0);
-    var maxY = boundsY.Max();
-    var minY = boundsY.Min();
-    var rangeY = maxY - minY;
-    var midY = minY + rangeY * 0.5f;
-
-    var boundsZ = bounds.Select(b => b.Z).DefaultIfEmpty(0);
-    var maxZ = boundsZ.Max();
-    var minZ = boundsZ.Min();
-    var rangeZ = maxZ - minZ;
-    var midZ = maxZ + rangeZ * 0.5f;
-
-    var inset = blue.StrokeWidth * 3;
-
-    if(rangeX > pathWidth)
+    #region Draw ImagePath Bounds (Debug)
+    foreach (var outerPt in imagePath.Pieces.SelectMany(x => x.ImageBounds))
     {
-        canvas.DrawText($"X: {rangeX}", midX, maxY, SKTextAlign.Center, angleFont, blue);
-        canvas.DrawLine(new SKPoint(minX, maxY + inset), new SKPoint(maxX, maxY + inset), blue);
+        var pt = outerPt.ToSKPoint(bounds, margin);
+        canvas.DrawCircle(pt, radius: 1, markerPaint);
     }
-
-    if(rangeY > pathWidth)
-    {
-        canvas.DrawText($"Y: {rangeY}", maxX - angleFont.Size * 3, midY, SKTextAlign.Left, angleFont, blue);
-        canvas.DrawLine(new SKPoint(maxX + inset, minY), new SKPoint(maxX + inset, maxY), blue);
-    }
-
-    if(rangeZ > pathWidth)
-    {
-        canvas.DrawText($"Z: {rangeZ}", maxX - angleFont.Size * 3, maxY, SKTextAlign.Left, angleFont, blue);
-        canvas.DrawCircle(maxX + inset, maxY + inset, pathWidth, blue);
-    }
-
-
-
-    //canvas.ClipRect(new SKRect(left: minX, top: minY, right: maxX, bottom: maxY));
-
-
+    #endregion
 }
 
 Console.WriteLine($"SVG written to: {Path.GetFullPath(outputPath)}");
