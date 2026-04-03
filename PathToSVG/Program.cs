@@ -21,7 +21,7 @@ var inVec = new Vector3(0, 1, 0);
 var outVec = inVec * -1;
 
 Path3D test3D = new(Pieces: [
-     new Line3D(new(-len*0.5f,0,len*0.5f), new(0,0,0)),
+    //new Line3D(new(-len*0.5f,0,len*0.5f), new(0,0,0)),
     new Line3D(new(0,0,0), new(len-arcRadius,0,0)),
     new Arc3D(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: 90),
     new Line3D(new(len,0,arcRadius), new(len,0,len- arcRadius)),
@@ -195,7 +195,19 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
             {
                 var imageCenter = line.ImageStart + (line.ImageEnd - line.ImageStart) * 0.5f;
                 var lineString = line.OuterLen3D != line.StraightLen3D ? $"{line.OuterLen3D.ToString("0.#")} ({line.StraightLen3D.ToString("0.#")})" : $"{line.OuterLen3D.ToString("0.#")}";
-                canvas.DrawText(lineString, imageCenter.ToSKPoint(bounds, margin), SKTextAlign.Center, textFont, arcPaint);
+
+                var distToLeft = Math.Abs(imageCenter.X - bounds.Min.X);
+                var distToRight = Math.Abs(imageCenter.X - bounds.Max.X);
+                var distToCenterWidth = Math.Abs(imageCenter.X - bounds.Center.X);
+
+                var distToTop = Math.Abs(imageCenter.Y - bounds.Max.Y);
+                var distToBottom = Math.Abs(imageCenter.Y - bounds.Min.Y);
+                var distToCenterHeight = Math.Abs(imageCenter.Y - bounds.Center.Y);
+
+                var heightOffset = distToTop < distToCenterHeight ? textFont.Size : (distToBottom < distToCenterHeight ? 0 : textFont.Size * 0.5f);
+
+                var textAlign = distToLeft < distToCenterWidth ? SKTextAlign.Left : (distToRight < distToCenterWidth ? SKTextAlign.Right : SKTextAlign.Center);
+                canvas.DrawText(lineString, imageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, heightOffset), textAlign, textFont, arcPaint);
             }
         }
         else if (piece is ImageArc arc)
