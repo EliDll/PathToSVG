@@ -8,6 +8,9 @@ namespace Utils
 {
     static class Util
     {
+        //Suitable float error term
+        public const float FLOAT_EPS = 1e-6f;
+
         public static SKPoint ToSKPoint(this Vector3 pt, Bounds bounds, Margin margin)
         {
             var boundsX = pt.X - bounds.Min.X;
@@ -15,7 +18,6 @@ namespace Utils
 
             var canvasX = margin.Left + boundsX;
             var canvasY = (bounds.Range.Y + margin.Top) - boundsY; //y points downwards in canvas
-
 
             return new SKPoint(canvasX, canvasY);
         }
@@ -48,103 +50,200 @@ namespace Utils
 
         public static CoordinateSystem GetProjection(this Path3D path3D, View view, bool preferLongestLine)
         {
-            IList<Line3D> lines = path3D.Pieces.Where(x => x is Line3D).Select(x => (Line3D)x).ToList();
-
-            var worldForward = new Vector3(1, 0, 0);
+            var worldRight = new Vector3(1, 0, 0);
             var worldUp = new Vector3(0, 0, 1);
+            var worldIn = new Vector3(0, 1, 0);
 
-
-            var projectionX = worldForward;
+            var projectionX = worldRight;
             var projectionY = worldUp;
+            var projectionZ = worldIn;
 
+            int? bestXLineIdx = null;
 
-
-            if (lines.Count > 0)
+            if (preferLongestLine)
             {
-                //Determine first projection axis (X)
+                //Choose longest line
+                var longestLineLen = FLOAT_EPS;
+                int? longestLineIdx = null;
 
-                var longestIndex = 0;
-
-                if (preferLongestLine)
+                for (int i = 0; i < path3D.Pieces.Count; i++)
                 {
-                    for (int i = 0; i < lines.Count; i++)
+                    if (path3D.Pieces[i] is Line3D line)
                     {
-                        var currentLine = lines[i];
-                        var currentLongest = lines[longestIndex];
-                        if (Vector3.Distance(currentLine.End, currentLine.Start) > Vector3.Distance(currentLongest.End, currentLongest.Start))
+                        var lineLen = Vector3.Distance(line.End, line.Start);
+                        if (lineLen > longestLineLen)
                         {
-                            longestIndex = i;
+                            longestLineIdx = i;
+                            longestLineLen = lineLen;
                         }
                     }
                 }
 
-                var longest = lines[longestIndex];
-                projectionX = Vector3.Normalize(longest.End - longest.Start);
-
-                if(lines.Count > 1)
+                bestXLineIdx = longestLineIdx;
+            }
+            else
+            {
+                //Choose first (real) line
+                for (int i = 0; i < path3D.Pieces.Count; i++)
                 {
-                    //Find most suitable second projection axis by looking at adjacent lines first
-                    var currentIndexOffset = 1;
-
-                    var nextIndex = longestIndex + currentIndexOffset;
-                    var prevIndex = longestIndex - currentIndexOffset;
-
-                    var eps = 1e-6f;
-
-                    while (nextIndex < lines.Count || prevIndex >= 0)
+                    if (path3D.Pieces[i] is Line3D line)
                     {
-                        var nextCandidate = nextIndex < lines.Count ? lines[nextIndex] : null;
-                        var prevCandidate = prevIndex >= 0 ? lines[prevIndex] : null;
-
-                        
-                        if (nextCandidate != null)
+                        var lineLen = Vector3.Distance(line.End, line.Start);
+                        if (lineLen > FLOAT_EPS)
                         {
-                            var dir = nextCandidate.End - nextCandidate.Start;
-                            //Orthonormal basis via Gram-Schmidt
-                            var perpendicular = dir - Vector3.Dot(dir, projectionX) * projectionX;
-                            if(perpendicular.Length() > eps * dir.Length())
-                            {
-                                //Truly perpendicular
-                                projectionY = Vector3.Normalize(perpendicular);
-                                break;
-                            }
+                            bestXLineIdx = i;
+                            break;
                         }
-                        if(prevCandidate != null)
-                        {
-                            var dir = prevCandidate.Start - prevCandidate.End;
-                            //Orthonormal basis via Gram-Schmidt
-                            var perpendicular = dir - Vector3.Dot(dir, projectionX) * projectionX;
-                            if (perpendicular.Length() > eps * dir.Length())
-                            {
-                                //Truly perpendicular
-                                projectionY = Vector3.Normalize(perpendicular);
-                                break;
-                            }
-                        }
-
-                        currentIndexOffset++;
-                        nextIndex = longestIndex + currentIndexOffset;
-                        prevIndex = longestIndex - currentIndexOffset;
                     }
-
                 }
             }
 
-            var projectionZ = Vector3.Cross(projectionY, projectionX); // no need to normalize, already unit length
-
-            return view switch
+            if (bestXLineIdx is int idx)
             {
-                View.Front => new CoordinateSystem(AxisX: projectionX, AxisY: projectionY, AxisZ: projectionZ),
-                View.Side => new CoordinateSystem(AxisX: projectionZ, AxisY: projectionY, AxisZ: projectionX), //flip x and z
-                View.Top => new CoordinateSystem(AxisX: projectionX, AxisY: projectionZ, AxisZ: projectionY), //flip y and z
+                var bestXLine = (Line3D)path3D.Pieces[idx];
+
+                # region Claude suggestion: projectionX should preferrably be screen right
+                var rawDir = Vector3.Normalize(bestXLine.End - bestXLine.Start);
+
+                // Anchor projectionX to worldForward so that reversing the picked
+                // line (longest vs first) doesn't mirror the whole projection.
+                projectionX = Vector3.Dot(rawDir, worldRight) >= 0 ? rawDir : -rawDir;
+                #endregion
+
+                //Attempt to determine other projection axes by simultaneously iterating over previous and next pieces
+                var currentIndexOffset = 1;
+                var nextIndex = idx + currentIndexOffset;
+                var prevIndex = idx - currentIndexOffset;
+
+                while (nextIndex < path3D.Pieces.Count || prevIndex >= 0)
+                {
+                    var nextCandidate = nextIndex < path3D.Pieces.Count ? path3D.Pieces[nextIndex] : null;
+                    if (nextCandidate != null)
+                    {
+                        if (nextCandidate is Arc3D nextArc)
+                        {
+                            //Use arc axis (guaranteed to be perpendicular to projectionX) as projectionZ
+                            projectionZ = Vector3.Normalize(nextArc.Axis);
+                            projectionY = Vector3.Cross(projectionX, projectionZ);
+                            break;
+                        }
+                        else if (nextCandidate is Line3D nextLine)
+                        {
+                            //Attempt to use line direction to create orthonormal basis via Gram-Schmidt
+                            var nextDir = nextLine.End - nextLine.Start;
+                            var nextPerpendicular = nextDir - Vector3.Dot(nextDir, projectionX) * projectionX;
+                            //Check for degenerated result if (almost) parallel
+                            if (nextPerpendicular.Length() > FLOAT_EPS * nextDir.Length())
+                            {
+                                projectionY = Vector3.Normalize(nextPerpendicular);
+                                projectionZ = Vector3.Cross(projectionX, projectionY);
+                                break;
+                            }
+                        }
+                    }
+
+                    var prevCandidate = prevIndex >= 0 ? path3D.Pieces[prevIndex] : null;
+                    if (prevCandidate != null)
+                    {
+                        if (prevCandidate is Arc3D prevArc)
+                        {
+                            //Use arc axis (guaranteed to be perpendicular to projectionX) as projectionZ
+                            projectionZ = Vector3.Normalize(prevArc.Axis);
+                            projectionY = Vector3.Cross(projectionX, projectionZ);
+                            break;
+                        }
+                        else if (prevCandidate is Line3D prevLine)
+                        {
+                            //Attempt to use line direction to create orthonormal basis via Gram-Schmidt
+                            var prevDir = prevLine.Start - prevLine.End; //Reverse direction for previous lines (results in more intuitive orthonormal basis)
+                            var prevPerpendicular = prevDir - Vector3.Dot(prevDir, projectionX) * projectionX;
+                            //Check for degenerated result if (almost) parallel
+                            if (prevPerpendicular.Length() > FLOAT_EPS * prevDir.Length())
+                            {
+                                projectionY = Vector3.Normalize(prevPerpendicular);
+                                projectionZ = Vector3.Cross(projectionX, projectionY);
+                                break;
+                            }
+                        }
+                    }
+
+                    currentIndexOffset++;
+                    nextIndex = idx + currentIndexOffset;
+                    prevIndex = idx - currentIndexOffset;
+                }
+            }
+
+            //Check for degenerate basis (if only projectionX was set from path geometry)
+            var perpendicularY = projectionY - Vector3.Dot(projectionY, projectionX) * projectionX;
+            if (perpendicularY.Length() <= FLOAT_EPS * projectionY.Length())
+            {
+                //Currently set projectionY (worldUp) is parallel to projectionX, try worldForward
+                var newProjectionY = worldRight - Vector3.Dot(worldRight, projectionX) * projectionX;
+                if (newProjectionY.Length() <= FLOAT_EPS)
+                {
+                    //worldForward is also parallel, use worldIn (guranteed to be non-parallel at this point)
+                    newProjectionY = worldIn - Vector3.Dot(worldIn, projectionX) * projectionX;
+                }
+
+                projectionY = Vector3.Normalize(newProjectionY);
+                projectionZ = Vector3.Cross(projectionX, projectionY);
+            }
+
+            #region Claude suggestion: projectionY should preferrably be screen up
+            // For Front/Side views the natural screen-up is worldUp (Z axis).
+            // For Top view the camera looks down worldUp, so screen-up becomes worldForward instead.
+            // In each case: if the geometry-derived projectionY points against the hint, flip it
+            // (and flip projectionZ accordingly to preserve right-handedness).
+            var screenUpHint = view switch
+            {
+                View.Front => worldUp,
+                View.Side => worldUp,
+                View.Top => worldRight,
                 _ => throw new NotImplementedException()
             };
+
+            // For Front/Side: projectionY should point generally upward
+            // For Top:        projectionY (which will become the view's vertical axis) should point generally forward
+            if (Vector3.Dot(projectionY, screenUpHint) < 0)
+            {
+                projectionY = -projectionY;
+                projectionZ = -projectionZ;  // flip Z to maintain right-handed basis
+            }
+            #endregion
+
+            #region Claude suggestion: Recompute AxisZ for alternative views to ensure consistent depth transform
+            // Now build each view's coordinate system so that AxisZ always points
+            // toward the viewer (positive = in front), using a stable cross product.
+            return view switch
+            {
+                // Front: look along -projectionZ (into screen), screen-right = projectionX, screen-up = projectionY
+                View.Front => new CoordinateSystem(
+                    AxisX: projectionX,
+                    AxisY: projectionY,
+                    AxisZ: projectionZ),
+
+                // Side: rotate 90° — projectionZ becomes screen-right, projectionX recedes into screen
+                // AxisY stays the same (still world-up aligned)
+                // AxisZ for depth = cross(AxisX, AxisY) to guarantee right-handed, pointing toward viewer
+                View.Side => new CoordinateSystem(
+                    AxisX: projectionZ,
+                    AxisY: projectionY,
+                    AxisZ: Vector3.Cross(projectionZ, projectionY)),  // = -projectionX if basis is orthonormal
+
+                // Top: look down -projectionY, screen-right = projectionX, screen-up = projectionZ (world-forward aligned)
+                // AxisZ for depth = cross(AxisX, AxisY) to guarantee right-handed, pointing toward viewer
+                View.Top => new CoordinateSystem(
+                    AxisX: projectionX,
+                    AxisY: projectionZ,
+                    AxisZ: Vector3.Cross(projectionX, projectionZ)),  // = -projectionY if basis is orthonormal
+
+                _ => throw new NotImplementedException()
+            };
+            #endregion
         }
 
         public static ImagePath ToImagePath(this Path3D path3D, View view, bool preferLongestLine, float degreesPerSample)
         {
-            var eps = 1e-6f;
-
             var pathRadius = path3D.Diameter * 0.5f;
 
             var projection = path3D.GetProjection(view, preferLongestLine);
@@ -192,7 +291,7 @@ namespace Utils
 
                     var imageStart2D = new Vector2(imageStart.X, imageStart.Y);
                     var imageEnd2D = new Vector2(imageEnd.X, imageEnd.Y);
-                    if (Vector2.Distance(imageStart2D, imageEnd2D) > eps)
+                    if (Vector2.Distance(imageStart2D, imageEnd2D) > FLOAT_EPS)
                     {
                         var imageDir = Vector3.Normalize(imageEnd - imageStart);
                         var imageOrthoDir = new Vector2(-imageDir.Y, imageDir.X);
@@ -219,24 +318,27 @@ namespace Utils
                     IList<Vector3> sweepVecSamples = [sweepStartCoreVec];
                     IList<Vector3> sweepVecBounds = [sweepStartOuterVec, sweepStartInnerVec];
 
-                    var currentDegrees = degreesPerSample;
-                    while (currentDegrees < Math.Abs(arc3D.SweepDeg))
+                    if (degreesPerSample > 0)
                     {
-                        var sweepSampleCoreVec = sweepStartCoreVec.RotateAround(arc3D.Axis, arc3D.SweepDeg > 0 ? -currentDegrees : currentDegrees);
-                        var sweepSampleDir = Vector3.Normalize(sweepSampleCoreVec);
-                        var sweepSampleOuterVec = sweepSampleCoreVec + sweepSampleDir * pathRadius;
-                        var sweepSampleInnerVec = sweepSampleCoreVec - sweepSampleDir * pathRadius;
+                        var currentDegrees = degreesPerSample;
+                        while (currentDegrees < Math.Abs(arc3D.SweepDeg))
+                        {
+                            var sweepSampleCoreVec = sweepStartCoreVec.RotateAround(arc3D.Axis, arc3D.SweepDeg > 0 ? -currentDegrees : currentDegrees);
+                            var sweepSampleDir = Vector3.Normalize(sweepSampleCoreVec);
+                            var sweepSampleOuterVec = sweepSampleCoreVec + sweepSampleDir * pathRadius;
+                            var sweepSampleInnerVec = sweepSampleCoreVec - sweepSampleDir * pathRadius;
 
-                        sweepVecSamples.Add(sweepSampleCoreVec);
-                        sweepVecBounds.Add(sweepSampleOuterVec);
-                        sweepVecBounds.Add(sweepSampleInnerVec);
-                        currentDegrees += degreesPerSample;
+                            sweepVecSamples.Add(sweepSampleCoreVec);
+                            sweepVecBounds.Add(sweepSampleOuterVec);
+                            sweepVecBounds.Add(sweepSampleInnerVec);
+                            currentDegrees += degreesPerSample;
+                        }
                     }
 
                     var sweepEndCoreVec = arc3D.End - arc3D.Center;
                     var sweepEndDir = Vector3.Normalize(sweepEndCoreVec);
                     var sweepEndOuterVec = sweepEndCoreVec + sweepEndDir * pathRadius;
-                    var sweepEndInnerVec = sweepStartCoreVec - sweepStartDir * pathRadius;
+                    var sweepEndInnerVec = sweepEndCoreVec - sweepEndDir * pathRadius;
 
                     sweepVecSamples.Add(sweepEndCoreVec);
                     sweepVecBounds.Add(sweepEndOuterVec);

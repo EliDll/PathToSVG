@@ -21,7 +21,7 @@ var inVec = new Vector3(0, 1, 0);
 var outVec = inVec * -1;
 
 Path3D test3D = new(Pieces: [
-    //new Line3D(new(-len*0.5f,0,len*0.5f), new(0,0,0)),
+    new Line3D(new(-len*0.5f,0,len*0.5f), new(0,0,0)),
     new Line3D(new(0,0,0), new(len-arcRadius,0,0)),
     new Arc3D(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: inVec, SweepDeg: 90),
     new Line3D(new(len,0,arcRadius), new(len,0,len- arcRadius)),
@@ -51,7 +51,7 @@ Diameter: 8
 );
 
 Path3D testOddAngles = new(Pieces: [
-    new Line3D(new(0,0,len), new(len,0,0)),
+    new Line3D(new(0,0,len*1.5f), new(len,0,0)),
     new Line3D(new(len,0,0),new(len*3,0,0)),
     new Line3D(new(len*3,0,0),new(len*4,0,len))
 ],
@@ -62,7 +62,7 @@ var view = View.Front;
 
 var degreesPerSample = 5.0f;
 
-var preferLongestLine = true;
+var preferLongestLine = false;
 
 var debugBounds = true;
 
@@ -134,7 +134,16 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
         IsAntialias = true
     };
 
+    var fullWidth = margin.Left + bounds.Range.X + margin.Right;
+    var fullHeight = margin.Top + bounds.Range.Y + margin.Bottom;
+
+    #region Draw Margins
     canvas.DrawRect(canvasRect, backgroundPaint);
+    canvas.DrawRect(0, 0, fullWidth, margin.Top, marginPaint);
+    canvas.DrawRect(0, fullHeight - margin.Bottom, fullWidth, margin.Bottom, marginPaint);
+    canvas.DrawRect(0, 0, margin.Left, fullHeight, marginPaint);
+    canvas.DrawRect(fullWidth - margin.Right, 0, margin.Right, fullHeight, marginPaint);
+    #endregion
 
     #region Draw ImagePath
     //Arcs first
@@ -197,17 +206,6 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
             canvas.DrawText(angleString, arc.ImageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, heightOffset), SKTextAlign.Center, textFont, measurePaint);
         }
     }
-    #endregion
-
-    var fullWidth = margin.Left + bounds.Range.X + margin.Right;
-    var fullHeight = margin.Top + bounds.Range.Y + margin.Bottom;
-
-    #region Draw Margins (possibly overpaints ImagePath)
-    canvas.DrawRect(0, 0, fullWidth, margin.Top, marginPaint);
-    canvas.DrawRect(0, fullHeight - margin.Bottom, fullWidth, margin.Bottom, marginPaint);
-    canvas.DrawRect(0, 0, margin.Left, fullHeight, marginPaint);
-    canvas.DrawRect(fullWidth - margin.Right, 0, margin.Right, fullHeight, marginPaint);
-
     #endregion
 
     #region Draw Measurements
