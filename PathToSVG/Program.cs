@@ -62,11 +62,11 @@ var view = View.Front;
 
 var degreesPerSample = 5.0f;
 
-var preferLongestLine = false;
+var preferLongestLine = true;
 
 var debugBounds = true;
 
-var path = test3D;
+var path = testCage;
 
 var imagePath = path.ToImagePath(view, preferLongestLine, degreesPerSample);
 

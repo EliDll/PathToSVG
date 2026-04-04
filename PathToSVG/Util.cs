@@ -48,6 +48,24 @@ namespace Utils
                 );
         }
 
+        //Orthonormal basis via Gram-Schmidt
+        //Returns null if result is degenerate, i.e. (almost) parallel
+        //Otherwise returns a normalized vector perpendicular to the specified axis
+        public static Vector3? GetPerpendicularTo(this Vector3 direction, Vector3 axis)
+        {
+            var normalizedAxis = Vector3.Normalize(axis); //just to be sure
+            var normalizedDirection = Vector3.Normalize(direction); //is expected to not be normalized
+            var perpendicular = normalizedDirection - Vector3.Dot(normalizedDirection, normalizedAxis) * normalizedAxis;
+            if (perpendicular.Length() > FLOAT_EPS)
+            {
+                return Vector3.Normalize(perpendicular);
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         public static CoordinateSystem GetProjection(this Path3D path3D, View view, bool preferLongestLine)
         {
             var worldRight = new Vector3(1, 0, 0);
@@ -105,7 +123,7 @@ namespace Utils
                 # region Claude suggestion: projectionX should preferrably be screen right
                 var rawDir = Vector3.Normalize(bestXLine.End - bestXLine.Start);
 
-                // Anchor projectionX to worldForward so that reversing the picked
+                // Anchor projectionX to worldRight so that reversing the picked
                 // line (longest vs first) doesn't mirror the whole projection.
                 projectionX = Vector3.Dot(rawDir, worldRight) >= 0 ? rawDir : -rawDir;
                 #endregion
@@ -124,19 +142,18 @@ namespace Utils
                         {
                             //Use arc axis (guaranteed to be perpendicular to projectionX) as projectionZ
                             projectionZ = Vector3.Normalize(nextArc.Axis);
-                            projectionY = Vector3.Cross(projectionX, projectionZ);
+                            projectionY = Vector3.Cross(projectionZ, projectionX);
                             break;
                         }
                         else if (nextCandidate is Line3D nextLine)
                         {
-                            //Attempt to use line direction to create orthonormal basis via Gram-Schmidt
+                            //Attempt to use line direction to create orthonormal basis (if sufficiently non-parallel)
                             var nextDir = nextLine.End - nextLine.Start;
-                            var nextPerpendicular = nextDir - Vector3.Dot(nextDir, projectionX) * projectionX;
-                            //Check for degenerated result if (almost) parallel
-                            if (nextPerpendicular.Length() > FLOAT_EPS * nextDir.Length())
+                            var nextPerpendicular = nextDir.GetPerpendicularTo(projectionX);
+                            if (nextPerpendicular is Vector3 newProjectionY)
                             {
-                                projectionY = Vector3.Normalize(nextPerpendicular);
-                                projectionZ = Vector3.Cross(projectionX, projectionY);
+                                projectionY = newProjectionY;
+                                projectionZ = Vector3.Cross(projectionY, projectionX);
                                 break;
                             }
                         }
@@ -149,19 +166,18 @@ namespace Utils
                         {
                             //Use arc axis (guaranteed to be perpendicular to projectionX) as projectionZ
                             projectionZ = Vector3.Normalize(prevArc.Axis);
-                            projectionY = Vector3.Cross(projectionX, projectionZ);
+                            projectionY = Vector3.Cross(projectionZ, projectionX);
                             break;
                         }
                         else if (prevCandidate is Line3D prevLine)
                         {
-                            //Attempt to use line direction to create orthonormal basis via Gram-Schmidt
+                            //Attempt to use line direction to create orthonormal basis (if sufficiently non-parallel)
                             var prevDir = prevLine.Start - prevLine.End; //Reverse direction for previous lines (results in more intuitive orthonormal basis)
-                            var prevPerpendicular = prevDir - Vector3.Dot(prevDir, projectionX) * projectionX;
-                            //Check for degenerated result if (almost) parallel
-                            if (prevPerpendicular.Length() > FLOAT_EPS * prevDir.Length())
+                            var prevPerpendicular = prevDir.GetPerpendicularTo(projectionX);
+                            if (prevPerpendicular is Vector3 newProjectionY)
                             {
-                                projectionY = Vector3.Normalize(prevPerpendicular);
-                                projectionZ = Vector3.Cross(projectionX, projectionY);
+                                projectionY = newProjectionY;
+                                projectionZ = Vector3.Cross(projectionY, projectionX);
                                 break;
                             }
                         }
@@ -174,24 +190,28 @@ namespace Utils
             }
 
             //Check for degenerate basis (if only projectionX was set from path geometry)
-            var perpendicularY = projectionY - Vector3.Dot(projectionY, projectionX) * projectionX;
-            if (perpendicularY.Length() <= FLOAT_EPS * projectionY.Length())
+            var perpendicularY = projectionY.GetPerpendicularTo(projectionX);
+            if (perpendicularY == null)
             {
-                //Currently set projectionY (worldUp) is parallel to projectionX, try worldForward
-                var newProjectionY = worldRight - Vector3.Dot(worldRight, projectionX) * projectionX;
-                if (newProjectionY.Length() <= FLOAT_EPS)
+                //Currently set projectionY (worldUp) is parallel to projectionX, try worldRight
+                var newPerpendicularY = worldRight.GetPerpendicularTo(projectionX);
+                if (newPerpendicularY == null)
                 {
-                    //worldForward is also parallel, use worldIn (guranteed to be non-parallel at this point)
-                    newProjectionY = worldIn - Vector3.Dot(worldIn, projectionX) * projectionX;
+                    //worldRight is also parallel, use worldIn (guranteed to be non-parallel at this point)
+                    newPerpendicularY = worldIn.GetPerpendicularTo(projectionX);
                 }
 
-                projectionY = Vector3.Normalize(newProjectionY);
-                projectionZ = Vector3.Cross(projectionX, projectionY);
+                //Should always be the case, see above comment (Still check for robustness)
+                if (newPerpendicularY is Vector3 newProjectionY)
+                {
+                    projectionY = newProjectionY;
+                    projectionZ = Vector3.Cross(projectionY, projectionX);
+                }
             }
 
             #region Claude suggestion: projectionY should preferrably be screen up
             // For Front/Side views the natural screen-up is worldUp (Z axis).
-            // For Top view the camera looks down worldUp, so screen-up becomes worldForward instead.
+            // For Top view the camera looks down worldUp, so screen-up becomes worldRight instead.
             // In each case: if the geometry-derived projectionY points against the hint, flip it
             // (and flip projectionZ accordingly to preserve right-handedness).
             var screenUpHint = view switch
@@ -228,14 +248,14 @@ namespace Utils
                 View.Side => new CoordinateSystem(
                     AxisX: projectionZ,
                     AxisY: projectionY,
-                    AxisZ: Vector3.Cross(projectionZ, projectionY)),  // = -projectionX if basis is orthonormal
+                    AxisZ: Vector3.Cross(projectionY, projectionZ)),  // = -projectionX if basis is orthonormal
 
                 // Top: look down -projectionY, screen-right = projectionX, screen-up = projectionZ (world-forward aligned)
                 // AxisZ for depth = cross(AxisX, AxisY) to guarantee right-handed, pointing toward viewer
                 View.Top => new CoordinateSystem(
                     AxisX: projectionX,
                     AxisY: projectionZ,
-                    AxisZ: Vector3.Cross(projectionX, projectionZ)),  // = -projectionY if basis is orthonormal
+                    AxisZ: Vector3.Cross(projectionZ, projectionX)),  // = -projectionY if basis is orthonormal
 
                 _ => throw new NotImplementedException()
             };
