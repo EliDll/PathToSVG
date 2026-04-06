@@ -1,9 +1,7 @@
 ﻿using SkiaSharp;
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using Types;
 using Utils;
-using static System.Net.Mime.MediaTypeNames;
 
 #nullable enable
 

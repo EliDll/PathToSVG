@@ -11,6 +11,64 @@ namespace Utils
         //Suitable float error term
         public const float FLOAT_EPS = 1e-6f;
 
+        public static bool NonZeroLength(this Vector3 vec) => vec.Length() > FLOAT_EPS;
+
+        public static bool NonZeroLength(this Vector2 vec) => vec.Length() > FLOAT_EPS;
+
+        public static bool NonZeroDistance(Vector3 vec1, Vector3 vec2) => Vector3.Distance(vec1, vec2) > FLOAT_EPS;
+
+        public static bool NonZeroDistance(Vector2 vec1, Vector2 vec2) => Vector2.Distance(vec1, vec2) > FLOAT_EPS;
+
+        //Gets viewplane components of Vector3
+        //Assumed to be encoded in corresponding coordinate basis
+        public static Vector2 GetImage2DComponents(this Vector3 imagePt)
+        {
+            return new Vector2(imagePt.X, imagePt.Y);
+        }
+
+        public static bool IsValidLine3D(this Line3D line3D)
+        {
+            return NonZeroDistance(line3D.Start, line3D.End);
+        }
+
+        public static bool IsValidImageLine(this ImageLine imageLine)
+        {
+            if (IsValidLine3D(imageLine.Line3D))
+            {
+                var imageStart2D = imageLine.ImageStart.GetImage2DComponents();
+                var imageEnd2D = imageLine.ImageEnd.GetImage2DComponents();
+                return NonZeroDistance(imageStart2D, imageEnd2D);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool IsValidArc3D(this Arc3D arc3D)
+        {
+            var hasRadius = NonZeroDistance(arc3D.Center, arc3D.Start);
+
+            //Either there is a difference between start or end, or it is exact (non-zero) multiple of 360 degrees sweep
+            var hasSweep = NonZeroDistance(arc3D.Start, arc3D.End) || (arc3D.SweepDeg > FLOAT_EPS && Math.Abs(arc3D.SweepDeg % 360) < FLOAT_EPS);
+
+            return hasRadius && hasSweep;
+        }
+
+        public static bool IsValidImageArc(this ImageArc imageArc)
+        {
+            if (IsValidArc3D(imageArc.Arc3D))
+            {
+                var imageCenter2D = imageArc.ImageCenter.GetImage2DComponents();
+                //Check if any image sweep sample is different from the projected arc center (i.e. forms a valid projection shape)
+                return imageArc.ImageSweepSamples.Any(x => NonZeroDistance(imageCenter2D, x.GetImage2DComponents()));
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static SKPoint ToSKPoint(this Vector3 pt, Bounds bounds, Margin margin)
         {
             var boundsX = pt.X - bounds.Min.X;
@@ -56,7 +114,7 @@ namespace Utils
             var normalizedAxis = Vector3.Normalize(axis); //just to be sure
             var normalizedDirection = Vector3.Normalize(direction); //is expected to not be normalized
             var perpendicular = normalizedDirection - Vector3.Dot(normalizedDirection, normalizedAxis) * normalizedAxis;
-            if (perpendicular.Length() > FLOAT_EPS)
+            if (perpendicular.NonZeroLength())
             {
                 return Vector3.Normalize(perpendicular);
             }
@@ -106,8 +164,7 @@ namespace Utils
                 {
                     if (path3D.Pieces[i] is Line3D line)
                     {
-                        var lineLen = Vector3.Distance(line.End, line.Start);
-                        if (lineLen > FLOAT_EPS)
+                        if (NonZeroDistance(line.End, line.Start))
                         {
                             bestXLineIdx = i;
                             break;
@@ -309,9 +366,9 @@ namespace Utils
                         imageBounds.Add(elongatedEnd3D.Project(projection));
                     }
 
-                    var imageStart2D = new Vector2(imageStart.X, imageStart.Y);
-                    var imageEnd2D = new Vector2(imageEnd.X, imageEnd.Y);
-                    if (Vector2.Distance(imageStart2D, imageEnd2D) > FLOAT_EPS)
+                    var imageStart2D = imageStart.GetImage2DComponents();
+                    var imageEnd2D = imageEnd.GetImage2DComponents();
+                    if (NonZeroDistance(imageStart2D, imageEnd2D))
                     {
                         var imageDir = Vector3.Normalize(imageEnd - imageStart);
                         var imageOrthoDir = new Vector2(-imageDir.Y, imageDir.X);
