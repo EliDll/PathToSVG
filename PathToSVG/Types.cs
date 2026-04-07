@@ -4,11 +4,11 @@
 
 namespace PathToSVG
 {
-    record PathPiece3D();
+    record PathPiece3D(Vector3 Start, Vector3 End);
 
-    record Line3D(Vector3 Start, Vector3 End) : PathPiece3D();
+    record Line3D(Vector3 Start, Vector3 End) : PathPiece3D(Start, End);
 
-    record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg) : PathPiece3D();
+    record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg) : PathPiece3D(Start, End);
 
     record Path3D(IList<PathPiece3D> Pieces, float Diameter);
 
@@ -26,13 +26,19 @@ namespace PathToSVG
         LongestCollinearGroup
     }
 
+    enum OverlapHandling
+    {
+        Shift3D,
+        Ignore
+    }
+
     record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
 
-    record ImagePiece(IList<Vector3> ImageBounds);
+    record ImagePiece();
 
-    record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageBounds, float StraightLen3D, float OuterLen3D) : ImagePiece(ImageBounds);
+    record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
 
-    record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageBounds) : ImagePiece(ImageBounds);
+    record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
 
     record ImagePath(IList<ImagePiece> Pieces, float Diameter);
 

@@ -450,9 +450,8 @@ namespace PathToSVG
                     var straightLen = Vector3.Distance(line3D.Start, line3D.End);
                     var outerLen = straightLen;
 
-                    IList<Vector3> imageBounds = [];
-                    imageBounds.Add(imageStart);
-                    imageBounds.Add(imageEnd);
+                    IList<Vector3> imageStartBounds = [imageStart];
+                    IList<Vector3> imageEndBounds = [imageEnd];
 
                     if (pieceIdx != 0 && path3D.Pieces[pieceIdx - 1] is Arc3D startArc)
                     {
@@ -462,7 +461,7 @@ namespace PathToSVG
 
                         outerLen += startArcWidth;
                         var elongatedStart3D = line3D.Start - dir3D * startArcWidth;
-                        imageBounds.Add(elongatedStart3D.Project(projection));
+                        imageStartBounds.Add(elongatedStart3D.Project(projection));
                     }
 
                     if (pieceIdx != path3D.Pieces.Count - 1 && path3D.Pieces[pieceIdx + 1] is Arc3D endArc)
@@ -473,7 +472,7 @@ namespace PathToSVG
 
                         outerLen += endArcWidth;
                         var elongatedEnd3D = line3D.End + dir3D * endArcWidth;
-                        imageBounds.Add(elongatedEnd3D.Project(projection));
+                        imageEndBounds.Add(elongatedEnd3D.Project(projection));
                     }
 
                     var imageStart2D = imageStart.GetImage2DComponents();
@@ -485,12 +484,24 @@ namespace PathToSVG
                         var outerTransform = new Vector3(imageOrthoDir.X, imageOrthoDir.Y, 0) * path3D.Diameter * 0.5f;
 
                         //Note that this is a simplified heuristic to add "fake" outer bounds to the 3D cylinder, solely based on 2D transofmrations (i.e. will not affect depth (Z) bounds)
-                        var outerBoundsTop = imageBounds.Select(x => x + outerTransform).ToList();
-                        var outerBoundsBottom = imageBounds.Select(x => x - outerTransform).ToList();
-                        imageBounds = [.. imageBounds, .. outerBoundsTop, .. outerBoundsBottom];
+                        var outerBoundsStartTop = imageStartBounds.Select(x => x + outerTransform).ToList();
+                        var outerBoundsStartBottom = imageStartBounds.Select(x => x - outerTransform).ToList();
+                        imageStartBounds = [.. imageStartBounds, .. outerBoundsStartTop, .. outerBoundsStartBottom];
+
+                        var outerBoundsEndTop = imageEndBounds.Select(x => x + outerTransform).ToList();
+                        var outerBoundsEndBottom = imageEndBounds.Select(x => x - outerTransform).ToList();
+                        imageEndBounds = [.. imageEndBounds, .. outerBoundsEndTop, .. outerBoundsEndBottom];
                     }
 
-                    var imageLine = new ImageLine(Line3D: line3D, ImageStart: imageStart, ImageEnd: imageEnd, ImageBounds: imageBounds, StraightLen3D: straightLen, OuterLen3D: outerLen);
+                    var imageLine = new ImageLine(
+                        Line3D: line3D,
+                        ImageStart: imageStart,
+                        ImageEnd: imageEnd,
+                        ImageStartBounds: imageStartBounds,
+                        ImageEndBounds: imageEndBounds,
+                        StraightLen3D: straightLen,
+                        OuterLen3D: outerLen
+                        );
                     imagePieces.Add(imageLine);
                 }
                 else if (piece3D is Arc3D arc3D)
@@ -532,9 +543,14 @@ namespace PathToSVG
                     sweepVecBounds.Add(sweepEndInnerVec);
 
                     var imageSweepSamples = sweepVecSamples.Select(x => arc3D.Center + x).Select(x => x.Project(projection)).ToList();
-                    var imageBounds = sweepVecBounds.Select(x => arc3D.Center + x).Select(x => x.Project(projection)).ToList();
+                    var imageSampleBounds = sweepVecBounds.Select(x => arc3D.Center + x).Select(x => x.Project(projection)).ToList();
 
-                    var imageArc = new ImageArc(Arc3D: arc3D, ImageCenter: imageCenter, ImageSweepSamples: imageSweepSamples, ImageBounds: imageBounds);
+                    var imageArc = new ImageArc(
+                        Arc3D: arc3D,
+                        ImageCenter: imageCenter,
+                        ImageSweepSamples: imageSweepSamples,
+                        ImageSampleBounds: imageSampleBounds
+                        );
                     imagePieces.Add(imageArc);
                 }
             }
@@ -544,7 +560,18 @@ namespace PathToSVG
 
         public static Bounds GetBounds(this ImagePath path)
         {
-            var pathBounds = path.Pieces.SelectMany(x => x.ImageBounds).ToList();
+            IList<Vector3> pathBounds = [];
+            foreach (var piece in path.Pieces)
+            {
+                if (piece is ImageLine line)
+                {
+                    pathBounds = pathBounds.Concat(line.ImageStartBounds).Concat(line.ImageEndBounds).ToList();
+                }
+                else if (piece is ImageArc arc)
+                {
+                    pathBounds = pathBounds.Concat(arc.ImageSampleBounds).ToList();
+                }
+            }
             if (pathBounds.Count == 0)
             {
                 pathBounds.Add(new Vector3(0, 0, 0));
@@ -575,6 +602,126 @@ namespace PathToSVG
                 );
 
             return new Bounds(Min: min, Max: max, Range: range, Center: center);
+        }
+
+        public static IList<ImagePiece> GetWithOffset(this IList<ImagePiece> originalPieces, Vector3 offset)
+        {
+            IList<ImagePiece> modifiedPieces = [];
+
+            foreach (var originalPiece in originalPieces)
+            {
+                if (originalPiece is ImageLine originalLine)
+                {
+                    var newLine = originalLine with
+                    {
+                        ImageEnd = originalLine.ImageEnd + offset,
+                        ImageStart = originalLine.ImageStart + offset,
+                        ImageStartBounds = originalLine.ImageStartBounds.Select(x => x + offset).ToList(),
+                        ImageEndBounds = originalLine.ImageEndBounds.Select(x => x + offset).ToList(),
+                    };
+                    modifiedPieces.Add(newLine);
+                }
+                else if (originalPiece is ImageArc originalArc)
+                {
+                    var newArc = originalArc with
+                    {
+                        ImageCenter = originalArc.ImageCenter + offset,
+                        ImageSweepSamples = originalArc.ImageSweepSamples.Select(x => x + offset).ToList(),
+                        ImageSampleBounds = originalArc.ImageSampleBounds.Select(x => x + offset).ToList()
+                    };
+                    modifiedPieces.Add(newArc);
+                }
+            }
+
+            return modifiedPieces;
+        }
+
+        public static bool LinearBetween(this Vector3 target, Vector3 start, Vector3 end, float? precalculatedDistanceBetween = null)
+        {
+            var distanceBetween = precalculatedDistanceBetween != null ? precalculatedDistanceBetween.Value : (end - start).Length();
+            var combinedDistance = Vector3.Distance(target, start) + Vector3.Distance(target, end);
+            return Math.Abs(combinedDistance - distanceBetween) < FLOAT_EPS;
+        }
+
+        public static bool AreOverlapping(ImageLine firstLine, ImageLine secondLine)
+        {
+            var firstDir = firstLine.ImageEnd - firstLine.ImageStart;
+            var firstLen = firstDir.Length();
+            var secondDir = secondLine.ImageEnd - secondLine.ImageStart;
+            var secondLen = secondDir.Length();
+            if (AreCollinear(firstDir, secondDir))
+            {
+                //Check if either end point of one line lies exactly within the other
+                return firstLine.ImageStart.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart, precalculatedDistanceBetween: secondLen)
+                    || firstLine.ImageEnd.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart, precalculatedDistanceBetween: secondLen)
+                    || secondLine.ImageStart.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart, precalculatedDistanceBetween: firstLen)
+                    || secondLine.ImageEnd.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart, precalculatedDistanceBetween: firstLen);
+            }
+            else
+            {
+                //Do not point in the same direction
+                return false;
+            }
+        }
+
+        public static ImagePath ApplyOverlapCorrection(this ImagePath inputPath)
+        {
+            var MAX_SHIFT_ATTEMPTS = 10;
+
+            IList<ImagePiece> finalPieces = [];
+
+            IList<ImagePiece> remainingPieces = inputPath.Pieces;
+
+            while (remainingPieces.Count > 0)
+            {
+                var currentPiece = remainingPieces.First();
+                remainingPieces = remainingPieces.Skip(1).ToList();
+
+                if (currentPiece is ImageLine currentLine)
+                {
+                    var modifiedLine = currentLine;
+
+                    var remainingLines = remainingPieces.Where(x => x is ImageLine).Select(x => (ImageLine)x).ToList();
+
+                    if (remainingLines.Count > 0)
+                    {
+                        var currentLineDir = Vector3.Normalize(currentLine.ImageEnd - currentLine.ImageStart);
+
+                        var previousLines = finalPieces.Where(x => x is ImageLine).Select(x => (ImageLine)x).ToList();
+
+                        for (int i = 0; i < MAX_SHIFT_ATTEMPTS; i++)
+                        {
+                            remainingLines = remainingPieces.Where(x => x is ImageLine).Select(x => (ImageLine)x).ToList();
+                            var nextLine = remainingLines.First();
+
+                            if (previousLines.Any(x => AreOverlapping(x, nextLine)))
+                            {
+                                var shiftOffset = currentLineDir * inputPath.Diameter * 2.0f;
+
+                                //Iteratively apply shift offset to current line
+                                modifiedLine = modifiedLine with
+                                {
+                                    ImageEnd = modifiedLine.ImageEnd + shiftOffset,
+                                    ImageEndBounds = modifiedLine.ImageEndBounds.Select(x => x + shiftOffset).ToList(),
+                                };
+
+                                //Iteratively apply shift offset to all remaining pieces (directly needed in next check)
+                                remainingPieces = remainingPieces.GetWithOffset(shiftOffset);
+                            }
+                        }
+                    }
+
+                    finalPieces.Add(modifiedLine);
+                }
+                else
+                {
+                    finalPieces.Add(currentPiece);
+                }
+            }
+
+            IList<ImagePiece> modifiedPieces = [];
+
+            return inputPath with { Pieces = finalPieces };
         }
     }
 }

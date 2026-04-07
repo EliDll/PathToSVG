@@ -7,7 +7,7 @@ namespace PathToSVG
 {
     static class Drawing
     {
-        public static byte[] DrawToBytes(Path3D path, View view, Anchor anchor)
+        public static byte[] DrawToBytes(Path3D path, View view, Anchor anchor, OverlapHandling overlapHandling)
         {
             var degreesPerSample = 5.0f;
 
@@ -21,6 +21,13 @@ namespace PathToSVG
             var red = new SKColor(255, 0, 0);
 
             var imagePath = path.ToImagePath(view, anchor, degreesPerSample);
+
+            var originalBounds = imagePath.GetBounds();
+
+            if (overlapHandling == OverlapHandling.Shift3D)
+            {
+                imagePath = imagePath.ApplyOverlapCorrection();
+            }
 
             var bounds = imagePath.GetBounds();
 
@@ -115,6 +122,27 @@ namespace PathToSVG
                             canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), linePaint);
                         }
                     }
+                    #endregion
+
+                    #region Draw ImagePath Bounds (Debug)
+                    if (debugBounds)
+                    {
+                        foreach (var piece in imagePath.Pieces)
+                        {
+                            if (piece is ImageLine line)
+                            {
+                                IList<Vector3> outerPts = [.. line.ImageStartBounds, .. line.ImageEndBounds];
+                                foreach (var outerPt in outerPts)
+                                {
+                                    var pt = outerPt.ToSKPoint(bounds, margin);
+                                    canvas.DrawCircle(pt, radius: 1, markerPaint);
+                                }
+                            }
+                        }
+                    }
+                    #endregion
+
+                    #region Draw ImagePath Labels
                     //Text labels at the end
                     for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
                     {
@@ -171,7 +199,7 @@ namespace PathToSVG
                         canvas.DrawLine(rangeXStart + new SKPoint(halfStrokeWidth, halfCapWidth), rangeXStart + new SKPoint(halfStrokeWidth, -halfCapWidth), measurePaint);
                         canvas.DrawLine(rangeXEnd + new SKPoint(-halfStrokeWidth, halfCapWidth), rangeXEnd + new SKPoint(-halfStrokeWidth, -halfCapWidth), measurePaint);
 
-                        canvas.DrawText($"X: {bounds.Range.X.ToString("0.#")}", bounds.Range.X * 0.5f + margin.Left, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Center, textFont, measurePaint);
+                        canvas.DrawText($"X: {originalBounds.Range.X.ToString("0.#")}", bounds.Range.X * 0.5f + margin.Left, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Center, textFont, measurePaint);
                     }
 
                     if (bounds.Range.Y > imagePath.Diameter)
@@ -182,7 +210,7 @@ namespace PathToSVG
                         canvas.DrawLine(rangeYStart + new SKPoint(halfCapWidth, halfStrokeWidth), rangeYStart + new SKPoint(-halfCapWidth, halfStrokeWidth), measurePaint);
                         canvas.DrawLine(rangeYEnd + new SKPoint(halfCapWidth, -halfStrokeWidth), rangeYEnd + new SKPoint(-halfCapWidth, -halfStrokeWidth), measurePaint);
 
-                        canvas.DrawText($"Y: {bounds.Range.Y.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, textFont.Size + measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
+                        canvas.DrawText($"Y: {originalBounds.Range.Y.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, textFont.Size + measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
                     }
 
                     if (bounds.Range.Z > imagePath.Diameter)
@@ -191,18 +219,7 @@ namespace PathToSVG
                         canvas.DrawCircle(markerCenter, radius: halfCapWidth, measurePaint);
                         canvas.DrawCircle(markerCenter, radius: halfCapWidth - measurePaint.StrokeWidth, marginPaint);
 
-                        canvas.DrawText($"Z: {bounds.Range.Z.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
-                    }
-                    #endregion
-
-                    #region Draw ImagePath Bounds (Debug)
-                    if (debugBounds)
-                    {
-                        foreach (var outerPt in imagePath.Pieces.Where(x => x is ImageLine).SelectMany(x => x.ImageBounds))
-                        {
-                            var pt = outerPt.ToSKPoint(bounds, margin);
-                            canvas.DrawCircle(pt, radius: 1, markerPaint);
-                        }
+                        canvas.DrawText($"Z: {originalBounds.Range.Z.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
                     }
                     #endregion
                 }
