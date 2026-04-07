@@ -11,17 +11,17 @@ var rightVec = new Vector3(1, 0, 0);
 var leftVec = rightVec * -1;
 var upVec = new Vector3(0, 0, 1);
 var downVec = upVec * -1;
-var outVec = new Vector3(0, -1, 0);
-var inVec = outVec * -1;
+var inVec = new Vector3(0, 1, 0);
+var outVec = inVec * -1;
 
 Path3D test3D = new(Pieces: [
     new Line3D(new(-len,0,len), new(0,0,0)),
     new Line3D(new(0,0,0), new(len-arcRadius,0,0)),
     new Arc3D(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: outVec, SweepDeg: 90),
     new Line3D(new(len,0,arcRadius), new(len,0,len- arcRadius)),
-    new Arc3D(Start: new(len,0,len- arcRadius), End: new(len, arcRadius, len), Center: new(len, arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 90),
+    new Arc3D(Start: new(len,0,len- arcRadius), End: new(len, arcRadius, len), Center: new(len, arcRadius, len-arcRadius), Axis: leftVec, SweepDeg: 90),
     new Line3D(new(len,arcRadius,len), new(len,len-arcRadius,len)),
-    new Arc3D(Start: new(len,len - arcRadius,len), End: new(len, len, len-arcRadius), Center: new(len, len-arcRadius, len-arcRadius), Axis: rightVec, SweepDeg: 90),
+    new Arc3D(Start: new(len,len - arcRadius,len), End: new(len, len, len-arcRadius), Center: new(len, len-arcRadius, len-arcRadius), Axis: leftVec, SweepDeg: 90),
     new Line3D(new(len,len,len-arcRadius), new(len,len,arcRadius)),
     new Arc3D(Start: new(len,len, arcRadius), End: new(len+arcRadius, len, 0), Center: new(len+arcRadius, len, arcRadius), Axis: outVec, SweepDeg: 90),
     new Line3D(new(len+arcRadius, len, 0), new(len*2,len,0)),

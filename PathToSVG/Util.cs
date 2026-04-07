@@ -310,7 +310,7 @@ namespace PathToSVG
                             if (nextPerpendicular is Vector3 newProjectionY)
                             {
                                 projectionY = newProjectionY;
-                                projectionZ = Vector3.Cross(projectionY, projectionX);
+                                projectionZ = Vector3.Cross(projectionX, projectionY);
                                 break;
                             }
                         }
@@ -334,7 +334,7 @@ namespace PathToSVG
                             if (prevPerpendicular is Vector3 newProjectionY)
                             {
                                 projectionY = newProjectionY;
-                                projectionZ = Vector3.Cross(projectionY, projectionX);
+                                projectionZ = Vector3.Cross(projectionX, projectionY);
                                 break;
                             }
                         }
@@ -362,7 +362,7 @@ namespace PathToSVG
                 if (newPerpendicularY is Vector3 newProjectionY)
                 {
                     projectionY = newProjectionY;
-                    projectionZ = Vector3.Cross(projectionY, projectionX);
+                    projectionZ = Vector3.Cross(projectionX, projectionY);
                 }
             }
 
@@ -375,16 +375,26 @@ namespace PathToSVG
             {
                 View.Front => worldUp,
                 View.Side => worldUp,
-                View.Top => worldRight,
+                View.Top => worldIn,
                 _ => throw new NotImplementedException()
             };
 
-            // For Front/Side: projectionY should point generally upward
-            // For Top:        projectionY (which will become the view's vertical axis) should point generally forward
-            if (Vector3.Dot(projectionY, screenUpHint) < 0)
+            // For Front/Side: check projectionY against screen-up hint
+            // For Top: check projectionZ, since that becomes AxisY (screen-up) in the Top view
+            if (view == View.Top)
             {
-                projectionY = -projectionY;
-                projectionZ = -projectionZ;  // flip Z to maintain right-handed basis
+                if (Vector3.Dot(projectionZ, worldIn) < 0)
+                {
+                    projectionZ = -projectionZ;
+                }
+            }
+            else
+            {
+                if (Vector3.Dot(projectionY, worldUp) < 0)
+                {
+                    projectionY = -projectionY;
+                    projectionZ = -projectionZ;
+                }
             }
             #endregion
 
@@ -405,14 +415,14 @@ namespace PathToSVG
                 View.Side => new CoordinateSystem(
                     AxisX: projectionZ,
                     AxisY: projectionY,
-                    AxisZ: Vector3.Cross(projectionY, projectionZ)),  // = -projectionX if basis is orthonormal
+                    AxisZ: Vector3.Cross(projectionZ, projectionY)),  // = -projectionX if basis is orthonormal
 
                 // Top: look down -projectionY, screen-right = projectionX, screen-up = projectionZ (world-forward aligned)
                 // AxisZ for depth = cross(AxisX, AxisY) to guarantee right-handed, pointing toward viewer
                 View.Top => new CoordinateSystem(
                     AxisX: projectionX,
                     AxisY: projectionZ,
-                    AxisZ: Vector3.Cross(projectionZ, projectionX)),  // = -projectionY if basis is orthonormal
+                    AxisZ: Vector3.Cross(projectionX, projectionZ)),  // = -projectionY if basis is orthonormal
 
                 _ => throw new NotImplementedException()
             };
