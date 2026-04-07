@@ -16,7 +16,7 @@ var inVec = new Vector3(0, 1, 0);
 var outVec = inVec * -1;
 
 Path3D test3D = new(Pieces: [
-    new Line3D(new(-len,0,len), new(0,0,0)),
+    //new Line3D(new(-len,0,len), new(0,0,0)),
     new Line3D(new(0,0,0), new(len-arcRadius,0,0)),
     new Arc3D(Start: new(len-arcRadius,0,0), End: new(len, 0, arcRadius), Center: new(len-arcRadius, 0, arcRadius), Axis: outVec, SweepDeg: 90),
     new Line3D(new(len,0,arcRadius), new(len,0,len- arcRadius)),
