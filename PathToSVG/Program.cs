@@ -66,6 +66,13 @@ var debugBounds = true;
 
 var path = testCage;
 
+var white = new SKColor(240, 240, 240);
+var grey = new SKColor(100, 100, 130);
+var blueishGrey = new SKColor(50, 50, 80);
+var blue = new SKColor(0, 150, 220);
+var yellow = new SKColor(255, 255, 0);
+var red = new SKColor(255, 0, 0);
+
 var imagePath = path.ToImagePath(view, preferLongestLine, degreesPerSample);
 
 var bounds = imagePath.GetBounds();
@@ -85,7 +92,7 @@ var measureLinesHeightFraction = bounds.Range.X * measureLinesPercentage;
 
 using var measurePaint = new SKPaint
 {
-    Color = new SKColor(0, 220, 255),
+    Color = blue,
     StrokeWidth = Math.Max(measureLinesWidhtFraction, measureLinesHeightFraction),
 };
 
@@ -101,35 +108,36 @@ var canvasRect = new SKRect(0, 0, bounds.Range.X + margin.Left + margin.Right, b
 using (var stream = new SKFileWStream(outputPath))
 using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
 {
+
+
+
     using var backgroundPaint = new SKPaint
     {
-        Color = new SKColor(100, 100, 130),
+        Color = white,
     };
 
     using var marginPaint = new SKPaint
     {
-        Color = new SKColor(50, 50, 80),
+        Color = white,
     };
 
     using var linePaint = new SKPaint
     {
-        Color = new SKColor(255, 0, 0),
+        Color = blueishGrey,
         StrokeWidth = imagePath.Diameter,
-        IsAntialias = true,
+        StrokeCap = SKStrokeCap.Round,
     };
 
     using var arcPaint = new SKPaint
     {
-        Color = new SKColor(0, 255, 0),
+        Color = blueishGrey,
         StrokeWidth = imagePath.Diameter,
-        IsAntialias = true,
         StrokeCap = SKStrokeCap.Round,
     };
 
     using var markerPaint = new SKPaint
     {
-        Color = new SKColor(255, 255, 0),
-        IsAntialias = true
+        Color = red,
     };
 
     var fullWidth = margin.Left + bounds.Range.X + margin.Right;
@@ -144,7 +152,7 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
     #endregion
 
     #region Draw ImagePath
-    //Arcs first
+    //Path segments first
     for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
     {
         var piece = imagePath.Pieces[pieceIdx];
@@ -157,12 +165,7 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
                 canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), arcPaint);
             }
         }
-    }
-    //Then lines
-    for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
-    {
-        var piece = imagePath.Pieces[pieceIdx];
-        if (piece is ImageLine line)
+        else if (piece is ImageLine line)
         {
             canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), linePaint);
         }
@@ -250,7 +253,7 @@ using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
     #region Draw ImagePath Bounds (Debug)
     if (debugBounds)
     {
-        foreach (var outerPt in imagePath.Pieces.SelectMany(x => x.ImageBounds))
+        foreach (var outerPt in imagePath.Pieces.Where(x => x is ImageLine).SelectMany(x => x.ImageBounds))
         {
             var pt = outerPt.ToSKPoint(bounds, margin);
             canvas.DrawCircle(pt, radius: 1, markerPaint);
