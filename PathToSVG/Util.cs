@@ -400,7 +400,7 @@ namespace Utils
                         var currentDegrees = degreesPerSample;
                         while (currentDegrees < Math.Abs(arc3D.SweepDeg))
                         {
-                            var sweepSampleCoreVec = sweepStartCoreVec.RotateAround(arc3D.Axis, arc3D.SweepDeg > 0 ? -currentDegrees : currentDegrees);
+                            var sweepSampleCoreVec = sweepStartCoreVec.RotateAround(arc3D.Axis, arc3D.SweepDeg > 0 ? currentDegrees : -currentDegrees);
                             var sweepSampleDir = Vector3.Normalize(sweepSampleCoreVec);
                             var sweepSampleOuterVec = sweepSampleCoreVec + sweepSampleDir * pathRadius;
                             var sweepSampleInnerVec = sweepSampleCoreVec - sweepSampleDir * pathRadius;
