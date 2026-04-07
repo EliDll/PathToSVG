@@ -30,7 +30,7 @@ Path3D test3D = new(Pieces: [
     new Arc3D(Start: new(len,len, arcRadius), End: new(len+arcRadius, len, 0), Center: new(len+arcRadius, len, arcRadius), Axis: outVec, SweepDeg: 90),
     new Line3D(new(len+arcRadius, len, 0), new(len*2,len,0)),
 ],
-Diameter: 6
+Diameter: 8
 );
 
 Path3D testCage = new(Pieces: [
@@ -45,7 +45,7 @@ Path3D testCage = new(Pieces: [
     new Arc3D(Start: new(0, 0, len-arcRadius*3), End:   new(arcRadius, 0, len-arcRadius*4), Center: new(arcRadius, 0,  len-arcRadius*3), Axis: outVec, SweepDeg: 90),
     new Line3D( new(arcRadius, 0, len-arcRadius*4), new(arcRadius*3, 0, len-arcRadius*4)),
 ],
-Diameter: 8
+Diameter: 10
 );
 
 Path3D testOddAngles = new(Pieces: [
@@ -53,14 +53,14 @@ Path3D testOddAngles = new(Pieces: [
     new Line3D(new(len,0,0),new(len*3,0,0)),
     new Line3D(new(len*3,0,0),new(len*4,0,len))
 ],
-Diameter: 8
+Diameter: 12
 );
 
 var view = View.Front;
 
 var degreesPerSample = 5.0f;
 
-var preferLongestLine = true;
+var anchor = Anchor.LongestLine;
 
 var debugBounds = true;
 
@@ -73,7 +73,7 @@ var blue = new SKColor(0, 150, 220);
 var yellow = new SKColor(255, 255, 0);
 var red = new SKColor(255, 0, 0);
 
-var imagePath = path.ToImagePath(view, preferLongestLine, degreesPerSample);
+var imagePath = path.ToImagePath(view, anchor, degreesPerSample);
 
 var bounds = imagePath.GetBounds();
 

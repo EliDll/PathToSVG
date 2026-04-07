@@ -124,7 +124,7 @@ namespace Utils
             }
         }
 
-        public static CoordinateSystem GetProjection(this Path3D path3D, View view, bool preferLongestLine)
+        public static CoordinateSystem GetProjection(this Path3D path3D, View view, Anchor anchor)
         {
             var worldRight = new Vector3(1, 0, 0);
             var worldUp = new Vector3(0, 0, 1);
@@ -136,41 +136,55 @@ namespace Utils
 
             int? bestXLineIdx = null;
 
-            if (preferLongestLine)
+            switch (anchor)
             {
-                //Choose longest line
-                var longestLineLen = FLOAT_EPS;
-                int? longestLineIdx = null;
-
-                for (int i = 0; i < path3D.Pieces.Count; i++)
-                {
-                    if (path3D.Pieces[i] is Line3D line)
+                case Anchor.FirstLine:
                     {
-                        var lineLen = Vector3.Distance(line.End, line.Start);
-                        if (lineLen > longestLineLen)
+                        //Choose first (real) line (if it exists)
+                        for (int i = 0; i < path3D.Pieces.Count; i++)
                         {
-                            longestLineIdx = i;
-                            longestLineLen = lineLen;
+                            if (path3D.Pieces[i] is Line3D line)
+                            {
+                                if (NonZeroDistance(line.End, line.Start))
+                                {
+                                    bestXLineIdx = i;
+                                    break;
+                                }
+                            }
                         }
+                        break;
                     }
-                }
-
-                bestXLineIdx = longestLineIdx;
-            }
-            else
-            {
-                //Choose first (real) line
-                for (int i = 0; i < path3D.Pieces.Count; i++)
-                {
-                    if (path3D.Pieces[i] is Line3D line)
+                case Anchor.LongestLine:
                     {
-                        if (NonZeroDistance(line.End, line.Start))
+                        //Choose longest (real) line (if it exists)
+                        var longestLineLen = FLOAT_EPS;
+                        int? longestLineIdx = null;
+
+                        for (int i = 0; i < path3D.Pieces.Count; i++)
                         {
-                            bestXLineIdx = i;
-                            break;
+                            if (path3D.Pieces[i] is Line3D line)
+                            {
+                                var lineLen = Vector3.Distance(line.End, line.Start);
+                                if (lineLen > longestLineLen)
+                                {
+                                    longestLineIdx = i;
+                                    longestLineLen = lineLen;
+                                }
+                            }
                         }
+
+                        bestXLineIdx = longestLineIdx;
+                        break;
                     }
-                }
+                case Anchor.LongestCoParallelLine:
+                    {
+                        //Choose longest (real) line of longest coparallel group of lines (if it exists)
+                        //TODO
+                        break;
+                    }
+                default:
+                    break;
+
             }
 
             if (bestXLineIdx is int idx)
@@ -319,11 +333,11 @@ namespace Utils
             #endregion
         }
 
-        public static ImagePath ToImagePath(this Path3D path3D, View view, bool preferLongestLine, float degreesPerSample)
+        public static ImagePath ToImagePath(this Path3D path3D, View view, Anchor anchor, float degreesPerSample)
         {
             var pathRadius = path3D.Diameter * 0.5f;
 
-            var projection = path3D.GetProjection(view, preferLongestLine);
+            var projection = path3D.GetProjection(view, anchor);
 
             IList<ImagePiece> imagePieces = [];
 

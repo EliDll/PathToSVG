@@ -19,6 +19,13 @@ namespace Types
         Top
     }
 
+    enum Anchor
+    {
+        FirstLine,
+        LongestLine,
+        LongestCoParallelLine
+    }
+
     record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
 
     record ImagePiece(IList<Vector3> ImageBounds);
