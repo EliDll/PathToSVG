@@ -2,7 +2,7 @@
 
 #nullable enable
 
-namespace Types
+namespace PathToSVG
 {
     record PathPiece3D();
 
@@ -23,7 +23,7 @@ namespace Types
     {
         FirstLine,
         LongestLine,
-        LongestCoParallelLine
+        LongestCollinearGroup
     }
 
     record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);

@@ -1,10 +1,9 @@
 ﻿using SkiaSharp;
 using System.Numerics;
-using Types;
 
 #nullable enable
 
-namespace Utils
+namespace PathToSVG
 {
     static class Util
     {
@@ -18,6 +17,12 @@ namespace Utils
         public static bool NonZeroDistance(Vector3 vec1, Vector3 vec2) => Vector3.Distance(vec1, vec2) > FLOAT_EPS;
 
         public static bool NonZeroDistance(Vector2 vec1, Vector2 vec2) => Vector2.Distance(vec1, vec2) > FLOAT_EPS;
+
+        public static bool AreCollinear(Vector3 vec1, Vector3 vec2)
+        {
+            var cross = Vector3.Cross(vec1, vec2);
+            return cross.Length() < FLOAT_EPS;
+        }
 
         //Gets viewplane components of Vector3
         //Assumed to be encoded in corresponding coordinate basis
@@ -176,10 +181,91 @@ namespace Utils
                         bestXLineIdx = longestLineIdx;
                         break;
                     }
-                case Anchor.LongestCoParallelLine:
+                case Anchor.LongestCollinearGroup:
                     {
-                        //Choose longest (real) line of longest coparallel group of lines (if it exists)
-                        //TODO
+                        var collinearGroups = new Dictionary<Vector3, IList<(Line3D Line, int Idx)>>();
+
+                        for (int i = 0; i < path3D.Pieces.Count; i++)
+                        {
+                            var piece = path3D.Pieces[i];
+                            var currentKeys = collinearGroups.Keys;
+                            if (piece is Line3D line)
+                            {
+                                var lineDir = line.End - line.Start;
+                                if (currentKeys.Any(key => AreCollinear(key, lineDir)))
+                                {
+                                    //Append to existing group
+                                    var targetKey = currentKeys.FirstOrDefault(key => AreCollinear(key, lineDir));
+                                    var currentValues = collinearGroups[targetKey];
+                                    collinearGroups[targetKey] = [.. currentValues, (Line: line, Idx: i)];
+                                }
+                                else
+                                {
+                                    //Create new group
+                                    collinearGroups.Add(Vector3.Normalize(lineDir), [(Line: line, Idx: i)]);
+                                }
+                            }
+                        }
+
+                        var longestSpan = FLOAT_EPS;
+                        int? longestGroupIdx = null;
+
+                        var groupKeys = collinearGroups.Keys.ToList();
+
+                        for (int i = 0; i < groupKeys.Count; i++)
+                        {
+                            var key = groupKeys[i];
+                            var entries = collinearGroups[key];
+
+                            var commonAxis = key;
+
+                            IList<Vector3> pts = [];
+                            foreach (var entry in entries)
+                            {
+                                pts.Add(entry.Line.Start);
+                                pts.Add(entry.Line.End);
+                            }
+
+                            var distancesOnAxis = pts.Select(x => Vector3.Dot(x, commonAxis)).DefaultIfEmpty(0).ToList();
+
+                            var min = distancesOnAxis.Min();
+                            var max = distancesOnAxis.Max();
+                            var spanLen = max - min;
+
+                            if (spanLen > longestSpan)
+                            {
+                                longestSpan = spanLen;
+                                longestGroupIdx = i;
+                            }
+                        }
+
+                        if (longestGroupIdx is int groupIdx)
+                        {
+                            //Choose longest line in this group as projectionX
+                            var longestGroupKey = groupKeys[groupIdx];
+
+                            var longestGroupEntries = collinearGroups[longestGroupKey];
+
+                            var longestLineLen = FLOAT_EPS;
+                            int? longestLineIdx = null;
+
+                            for (int i = 0; i < longestGroupEntries.Count; i++)
+                            {
+                                var line = longestGroupEntries[i].Line;
+                                var lineLen = Vector3.Distance(line.End, line.Start);
+                                if (lineLen > longestLineLen)
+                                {
+                                    longestLineIdx = i;
+                                    longestLineLen = lineLen;
+                                }
+                            }
+
+                            if (longestLineIdx is int lineIdx)
+                            {
+                                bestXLineIdx = longestGroupEntries[lineIdx].Idx;
+                            }
+                        }
+
                         break;
                     }
                 default:
