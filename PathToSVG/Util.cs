@@ -367,9 +367,11 @@ namespace PathToSVG
                 if (newPerpendicularY is Vector3 newProjectionY)
                 {
                     projectionY = newProjectionY;
-                    projectionZ = Vector3.Cross(projectionX, projectionY);
                 }
             }
+
+            //Make sure projectionZ is still perpendicular at this point
+            projectionZ = Vector3.Cross(projectionX, projectionY);
 
             #region Claude suggestion: projectionY should preferrably be screen up
             // For Front/Side views the natural screen-up is worldUp (Z axis).
