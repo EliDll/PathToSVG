@@ -20,7 +20,7 @@ namespace PathToSVG
 
         public static bool AreCollinear(Vector3 vec1, Vector3 vec2)
         {
-            var cross = Vector3.Cross(vec1, vec2);
+            var cross = Vector3.Cross(Vector3.Normalize(vec1), Vector3.Normalize(vec2));
             return cross.Length() < FLOAT_EPS;
         }
 
@@ -348,7 +348,12 @@ namespace PathToSVG
 
             //Check for degenerate basis (if only projectionX was set from path geometry)
             var perpendicularY = projectionY.GetPerpendicularTo(projectionX);
-            if (perpendicularY == null)
+            if (perpendicularY is Vector3 perpendicularProjectionY)
+            {
+                //Make sure final projectionY is actually perpendicular to projectionX
+                projectionY = perpendicularProjectionY;
+            }
+            else
             {
                 //Currently set projectionY (worldUp) is parallel to projectionX, try worldRight
                 var newPerpendicularY = worldRight.GetPerpendicularTo(projectionX);

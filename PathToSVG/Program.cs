@@ -11,7 +11,7 @@ var arcRadius = 30;
 var rightVec = new Vector3(1, 0, 0);
 var leftVec = rightVec * -1;
 var upVec = new Vector3(0, 0, 1);
-var downVec = upVec * -1;
+var downVec = upVec * -1;   
 var inVec = new Vector3(0, 1, 0);
 var outVec = inVec * -1;
 

@@ -13,7 +13,7 @@ namespace PathToSVG
 
             var debugBounds = true;
 
-            var white = new SKColor(240, 240, 240);
+            var white = new SKColor(255, 255, 255);
             var grey = new SKColor(100, 100, 130);
             var blueishGrey = new SKColor(50, 50, 80);
             var blue = new SKColor(0, 150, 220);
@@ -50,11 +50,13 @@ namespace PathToSVG
                 StrokeWidth = Math.Max(measureLinesWidhtFraction, measureLinesHeightFraction),
             };
 
+            var rangeTolerance = 1.1f;
+
             var margin = new Margin(
                 Left: measurePaint.StrokeWidth,
-                Top: bounds.Range.Y > imagePath.Diameter ? textFont.Size + measurePaint.StrokeWidth * 2 : measurePaint.StrokeWidth,
-                Right: bounds.Range.Y > imagePath.Diameter ? measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth,
-                Bottom: bounds.Range.X > imagePath.Diameter ? textFont.Size + measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth
+                Top: bounds.Range.Y > imagePath.Diameter * rangeTolerance ? textFont.Size + measurePaint.StrokeWidth * 2 : measurePaint.StrokeWidth,
+                Right: bounds.Range.Y > imagePath.Diameter * rangeTolerance ? measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth,
+                Bottom: bounds.Range.X > imagePath.Diameter * rangeTolerance ? textFont.Size + measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth
                 );
 
             var canvasRect = new SKRect(0, 0, bounds.Range.X + margin.Left + margin.Right, bounds.Range.Y + margin.Top + margin.Bottom);
@@ -190,7 +192,7 @@ namespace PathToSVG
                     var xLineHeight = margin.Top + bounds.Range.Y + halfCapWidth + measurePaint.StrokeWidth;
                     var yLineWidth = margin.Left + bounds.Range.X + halfCapWidth + measurePaint.StrokeWidth;
 
-                    if (bounds.Range.X > imagePath.Diameter)
+                    if (bounds.Range.X > imagePath.Diameter * rangeTolerance)
                     {
                         var rangeXStart = new SKPoint(margin.Left, xLineHeight);
                         var rangeXEnd = new SKPoint(margin.Left + bounds.Range.X, xLineHeight);
@@ -202,7 +204,7 @@ namespace PathToSVG
                         canvas.DrawText($"X: {originalBounds.Range.X.ToString("0.#")}", bounds.Range.X * 0.5f + margin.Left, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Center, textFont, measurePaint);
                     }
 
-                    if (bounds.Range.Y > imagePath.Diameter)
+                    if (bounds.Range.Y > imagePath.Diameter * rangeTolerance)
                     {
                         var rangeYStart = new SKPoint(yLineWidth, margin.Top);
                         var rangeYEnd = new SKPoint(yLineWidth, margin.Top + bounds.Range.Y);
@@ -213,7 +215,7 @@ namespace PathToSVG
                         canvas.DrawText($"Y: {originalBounds.Range.Y.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, textFont.Size + measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
                     }
 
-                    if (bounds.Range.Z > imagePath.Diameter)
+                    if (bounds.Range.Z > imagePath.Diameter * rangeTolerance)
                     {
                         var markerCenter = new SKPoint(yLineWidth, xLineHeight);
                         canvas.DrawCircle(markerCenter, radius: halfCapWidth, measurePaint);
