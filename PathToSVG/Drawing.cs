@@ -13,6 +13,8 @@ namespace PathToSVG
 
             var debugBounds = true;
 
+            var drawBackdrop = false;
+
             var white = new SKColor(255, 255, 255);
             var grey = new SKColor(100, 100, 130);
             var blueishGrey = new SKColor(50, 50, 80);
@@ -97,12 +99,15 @@ namespace PathToSVG
                     var fullWidth = margin.Left + bounds.Range.X + margin.Right;
                     var fullHeight = margin.Top + bounds.Range.Y + margin.Bottom;
 
-                    #region Draw Margins
-                    canvas.DrawRect(canvasRect, backgroundPaint);
-                    canvas.DrawRect(0, 0, fullWidth, margin.Top, marginPaint);
-                    canvas.DrawRect(0, fullHeight - margin.Bottom, fullWidth, margin.Bottom, marginPaint);
-                    canvas.DrawRect(0, 0, margin.Left, fullHeight, marginPaint);
-                    canvas.DrawRect(fullWidth - margin.Right, 0, margin.Right, fullHeight, marginPaint);
+                    #region Draw Backdrop
+                    if (drawBackdrop)
+                    {
+                        canvas.DrawRect(canvasRect, backgroundPaint);
+                        canvas.DrawRect(0, 0, fullWidth, margin.Top, marginPaint);
+                        canvas.DrawRect(0, fullHeight - margin.Bottom, fullWidth, margin.Bottom, marginPaint);
+                        canvas.DrawRect(0, 0, margin.Left, fullHeight, marginPaint);
+                        canvas.DrawRect(fullWidth - margin.Right, 0, margin.Right, fullHeight, marginPaint);
+                    }
                     #endregion
 
                     #region Draw ImagePath
