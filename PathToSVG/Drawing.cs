@@ -21,6 +21,7 @@ namespace PathToSVG
             var blue = new SKColor(0, 150, 220);
             var yellow = new SKColor(255, 255, 0);
             var red = new SKColor(255, 0, 0);
+            var redTransparent = new SKColor(255, 0, 0, 120);
 
             var imagePath = path.ToImagePath(view, anchor, degreesPerSample);
 
@@ -77,16 +78,23 @@ namespace PathToSVG
                         Color = white,
                     };
 
-                    using var linePaint = new SKPaint
+                    using var basePathPaint = new SKPaint
                     {
                         Color = blueishGrey,
                         StrokeWidth = imagePath.Diameter,
                         StrokeCap = SKStrokeCap.Round,
                     };
 
-                    using var arcPaint = new SKPaint
+                    using var dependentPathPaint = new SKPaint
                     {
-                        Color = blueishGrey,
+                        Color = redTransparent,
+                        StrokeWidth = imagePath.Diameter,
+                        StrokeCap = SKStrokeCap.Round,
+                    };
+
+                    using var selectedPathPaint = new SKPaint
+                    {
+                        Color = red,
                         StrokeWidth = imagePath.Diameter,
                         StrokeCap = SKStrokeCap.Round,
                     };
@@ -110,8 +118,7 @@ namespace PathToSVG
                     }
                     #endregion
 
-                    #region Draw ImagePath
-                    //Path segments first
+                    #region Draw ImagePath (Base Layer)
                     for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
                     {
                         var piece = imagePath.Pieces[pieceIdx];
@@ -121,12 +128,52 @@ namespace PathToSVG
                             {
                                 var start = arc.ImageSweepSamples[sampleIdx];
                                 var end = arc.ImageSweepSamples[sampleIdx + 1];
-                                canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), arcPaint);
+                                canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), basePathPaint);
                             }
                         }
                         else if (piece is ImageLine line)
                         {
-                            canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), linePaint);
+                            canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), basePathPaint);
+                        }
+                    }
+                    #endregion
+
+                    #region Draw Dependent ImagePath (Mid Layer)
+                    for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
+                    {
+                        var piece = imagePath.Pieces[pieceIdx];
+                        if (piece is ImageArc arc && arc.Arc3D.IsDependent)
+                        {
+                            for (int sampleIdx = 0; sampleIdx < arc.ImageSweepSamples.Count - 1; sampleIdx++)
+                            {
+                                var start = arc.ImageSweepSamples[sampleIdx];
+                                var end = arc.ImageSweepSamples[sampleIdx + 1];
+                                canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), dependentPathPaint);
+                            }
+                        }
+                        else if (piece is ImageLine line && line.Line3D.IsDependent)
+                        {
+                            canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), dependentPathPaint);
+                        }
+                    }
+                    #endregion
+
+                    #region Draw Selected ImagePath (Top Layer)
+                    for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
+                    {
+                        var piece = imagePath.Pieces[pieceIdx];
+                        if (piece is ImageArc arc && arc.Arc3D.IsSelected)
+                        {
+                            for (int sampleIdx = 0; sampleIdx < arc.ImageSweepSamples.Count - 1; sampleIdx++)
+                            {
+                                var start = arc.ImageSweepSamples[sampleIdx];
+                                var end = arc.ImageSweepSamples[sampleIdx + 1];
+                                canvas.DrawLine(start.ToSKPoint(bounds, margin), end.ToSKPoint(bounds, margin), selectedPathPaint);
+                            }
+                        }
+                        else if (piece is ImageLine line && line.Line3D.IsSelected)
+                        {
+                            canvas.DrawLine(line.ImageStart.ToSKPoint(bounds, margin), line.ImageEnd.ToSKPoint(bounds, margin), selectedPathPaint);
                         }
                     }
                     #endregion

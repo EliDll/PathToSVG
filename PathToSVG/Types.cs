@@ -4,11 +4,11 @@
 
 namespace PathToSVG
 {
-    record PathPiece3D(Vector3 Start, Vector3 End);
+    record PathPiece3D(Vector3 Start, Vector3 End, bool IsSelected, bool IsDependent);
 
-    record Line3D(Vector3 Start, Vector3 End) : PathPiece3D(Start, End);
+    record Line3D(Vector3 Start, Vector3 End, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
-    record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg) : PathPiece3D(Start, End);
+    record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
     record Path3D(IList<PathPiece3D> Pieces, float Diameter);
 
