@@ -78,12 +78,13 @@ Diameter: 12
 );
 
 Path3D testStraight = new(Pieces: [
-    new Line3D(new(0,0,0), new(len*10,0,0)),
+    new Line3D(new(0,0,0), new(len*5,0,0)),
+    //new Line3D(new(len*5,0,0), new(len*10,0,0)),
 ],
 Diameter: 16
 );
 
-var path = testOverlap;
+var path = testStraight;
 
 var view = View.Front;
 

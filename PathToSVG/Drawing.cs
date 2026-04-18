@@ -139,13 +139,14 @@ namespace PathToSVG
             var pathHasZRange = bounds.Range.Z > imagePath.Diameter * rangeTolerance;
 
             var baseMargin = totalDimensionsAxisPaint.StrokeWidth;
+            var baseTopMargin = settings.DisplayMeasurements ? labelFont.Size : baseMargin;
             var topMarginWithAxis = labelFont.Size + totalDimensionsAxisPaint.StrokeWidth * 2;
             var rightMarginWithAxis = totalDimensionsAxisPaint.StrokeWidth * 6;
             var bottomMarginWithAxis = labelFont.Size + totalDimensionsAxisPaint.StrokeWidth * 6;
 
             var defaultMargin = new Margin(
                     Left: baseMargin,
-                    Top: baseMargin,
+                    Top: baseTopMargin,
                     Right: baseMargin,
                     Bottom: baseMargin
                     );
@@ -161,7 +162,7 @@ namespace PathToSVG
                         ),
                     DisplayTotalDimensions.Auto => new Margin(
                         Left: baseMargin,
-                        Top: pathHasYRange ? topMarginWithAxis : baseMargin,
+                        Top: pathHasYRange ? topMarginWithAxis : baseTopMargin,
                         Right: pathHasYRange ? rightMarginWithAxis : baseMargin,
                         Bottom: pathHasXRange ? bottomMarginWithAxis : baseMargin
                         ),
