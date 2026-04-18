@@ -12,6 +12,20 @@ namespace PathToSVG
 
     record Path3D(IList<PathPiece3D> Pieces, float Diameter);
 
+    record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
+
+    record ImagePiece();
+
+    record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
+
+    record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
+
+    record ImagePath(IList<ImagePiece> Pieces, float Diameter);
+
+    record Margin(float Left, float Top, float Right, float Bottom);
+
+    record Bounds(Vector3 Min, Vector3 Max, Vector3 Range, Vector3 Center);
+
     enum View
     {
         Front,
@@ -26,23 +40,104 @@ namespace PathToSVG
         LongestCollinearGroup
     }
 
-    enum OverlapHandling
+    enum DisplayTotalDimensions
     {
-        Shift3D,
+        Always,
+        Auto,
+        Never
+    }
+
+    enum HandleOverlaps
+    {
+        Shift,
         Ignore
     }
 
-    record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
+    record DisplaySettings
+    {
+        /// <summary>
+        /// Determines if length and angle labels are displayed
+        /// </summary>
+        public required bool DisplayMeasurements { get; init; }
 
-    record ImagePiece();
+        /// <summary>
+        /// Decimal separator in numeric text labels
+        /// </summary>
+        public required string DecimalSeparator { get; init; }
 
-    record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
+        /// <summary>
+        /// Number of fraction digits that are displayed in numeric text labels
+        /// </summary>
+        public required int FractionDigits { get; init; }
 
-    record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
+        /// <summary>
+        /// Conversion factor to apply to internal values (mm) to display them in length text labels
+        /// </summary>
+        public required double MillimetresToDisplayLengthUnit { get; init; }
 
-    record ImagePath(IList<ImagePiece> Pieces, float Diameter);
+        /// <summary>
+        /// Optional suffix that is appended to length text labels
+        /// If not specified, no suffix will be displayed
+        /// </summary>
+        public required string? LengthUnitSuffix { get; init; }
 
-    record Margin(float Left, float Top, float Right, float Bottom);
+        /// <summary>
+        /// Determines whether, in addition to outer lengths, straight lengths will also be shown (in brackets)
+        /// </summary>
+        public required bool DisplayStraightLengths { get; init; }
 
-    record Bounds(Vector3 Min, Vector3 Max, Vector3 Range, Vector3 Center);
+        /// <summary>
+        /// Optional criterion, specified as degrees ]0,360[ for not displaying angle text labels for angles (smaller than 360 degrees) that are an exact multiple of the specified value
+        /// Note: Angles greater than 360 degrees (spirals) will always be displayed as text labels, since the drawn path will overlap
+        /// </summary>
+        public required int? HideAnglesModuloDeg { get; init; }
+
+        /// <summary>
+        /// Font size, specified as percentage [0,100] of total image dimensions
+        /// </summary>
+        public required int? FontSizePercentage { get; init; }
+
+        /// <summary>
+        /// Optional stroke width, specified as percentage [0,100] of total image dimensions
+        /// If not specified, stroke width is set according to bar diameter 
+        /// </summary>
+        public required int? FixedStrokeWidthPercentage { get; init; }
+
+        /// <summary>
+        /// Specifies when total dimension (width, height, depth) axes will be displayed
+        /// If set to Auto, only the axes in which the given bar extends (axis dimension greater than bar diameter) will be shown
+        /// </summary>
+        public required DisplayTotalDimensions DisplayTotalDimensions { get; init; }
+
+        /// <summary>
+        /// Specifies how overlaps in the underlying path geometry should be handled when displaying it
+        /// </summary>
+        public required HandleOverlaps HandleOverlaps { get; init; }
+
+        /// <summary>
+        /// HEX Color Code (#RRGGBB) of the drawn base path
+        /// </summary>
+        public required string? BasePathColorHEX { get; init; }
+
+        /// <summary>
+        /// HEX Color Code (#RRGGBB) of the drawn highlighted path
+        /// This simultaneously affects the display of highlighted segment indices, as well as highlighted slave segment indices (with reduced opacity)
+        /// </summary>
+        public required string? HighlightPathColorHEX { get; init; }
+
+        /// <summary>
+        /// HEX Color Code (#RRGGBB) of the total dimension axes
+        /// </summary>
+        public required string? TotalDimensionsAxisColorHEX { get; init; }
+
+        /// <summary>
+        /// HEX Color Code (#RRGGBB) of all drawn angle text labels
+        /// </summary>
+        public required string? AngleLabelColorHEX { get; init; }
+
+        /// <summary>
+        /// HEX Color Code (#RRGGBB) of all drawn length text labels
+        /// </summary>
+        public required string? LengthLabelColorHEX { get; init; }
+    }
 }

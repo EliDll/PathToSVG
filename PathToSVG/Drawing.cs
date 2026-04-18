@@ -7,13 +7,42 @@ namespace PathToSVG
 {
     static class Drawing
     {
-        public static byte[] DrawToBytes(Path3D path, View view, Anchor anchor, OverlapHandling overlapHandling)
+        public static byte[] DrawToBytes(Path3D path, View view, Anchor anchor, DisplaySettings settings)
         {
+            var debugBounds = false;
+            var drawBackdrop = false;
+
             var degreesPerSample = 5.0f;
 
-            var debugBounds = true;
+            var imagePath = path.ToImagePath(view, anchor, degreesPerSample);
 
-            var drawBackdrop = false;
+            var originalBounds = imagePath.GetBounds();
+
+            switch (settings.HandleOverlaps)
+            {
+                case HandleOverlaps.Shift:
+                    {
+                        //Determine preliminary path stroke width (based on unshifted path image dimensions) to apply appropriate shifting
+                        var unshiftedMaxImageRange = Math.Max(originalBounds.Range.Y, originalBounds.Range.X);
+                        var unshiftedPathStrokeWidth = imagePath.Diameter;
+                        if (settings.FixedStrokeWidthPercentage != null)
+                        {
+                            int unshiftedPathStrokeWidthPercentage = settings.FixedStrokeWidthPercentage.Value.Clamp(min: 0, max: 100);
+                            var unshiftedPathStrokeWidthPercent = unshiftedPathStrokeWidthPercentage / 100.0f;
+                            unshiftedPathStrokeWidth = unshiftedMaxImageRange * unshiftedPathStrokeWidthPercent;
+                        }
+
+                        imagePath = imagePath.ApplyOverlapCorrection(shiftBy: unshiftedPathStrokeWidth * 2.0f);
+                        break;
+                    }
+
+                case HandleOverlaps.Ignore:
+                default:
+                    //Do nothing
+                    break;
+            }
+
+            var bounds = imagePath.GetBounds();
 
             var white = new SKColor(255, 255, 255);
             var grey = new SKColor(100, 100, 130);
@@ -21,46 +50,124 @@ namespace PathToSVG
             var blue = new SKColor(0, 150, 220);
             var yellow = new SKColor(255, 255, 0);
             var red = new SKColor(255, 0, 0);
-            var redTransparent = new SKColor(255, 0, 0, 120);
 
-            var imagePath = path.ToImagePath(view, anchor, degreesPerSample);
 
-            var originalBounds = imagePath.GetBounds();
+            SKColor totalDimensionsAxisColor;
+            if (settings.TotalDimensionsAxisColorHEX == null || !SKColor.TryParse(settings.TotalDimensionsAxisColorHEX, out totalDimensionsAxisColor)) totalDimensionsAxisColor = blue;
 
-            if (overlapHandling == OverlapHandling.Shift3D)
+            SKColor basePathColor;
+            if (settings.BasePathColorHEX == null || !SKColor.TryParse(settings.BasePathColorHEX, out basePathColor)) basePathColor = blueishGrey;
+
+            SKColor highlightPathColor;
+            if (settings.HighlightPathColorHEX == null || !SKColor.TryParse(settings.HighlightPathColorHEX, out highlightPathColor)) highlightPathColor = red;
+
+            SKColor angleLabelColor;
+            if (settings.AngleLabelColorHEX == null || !SKColor.TryParse(settings.AngleLabelColorHEX, out angleLabelColor)) angleLabelColor = blue;
+
+            SKColor lengthLabelColor;
+            if (settings.LengthLabelColorHEX == null || !SKColor.TryParse(settings.LengthLabelColorHEX, out lengthLabelColor)) lengthLabelColor = blue;
+
+            var maxImageRange = Math.Max(bounds.Range.Y, bounds.Range.X);
+
+            int labelFontSizePercentage = (settings.FontSizePercentage ?? 5).Clamp(min: 0, max: 100);
+            var labelFontSizePercent = labelFontSizePercentage / 100.0f;
+            var labelFontSize = maxImageRange * labelFontSizePercent;
+            using var labelFont = new SKFont
             {
-                imagePath = imagePath.ApplyOverlapCorrection();
-            }
-
-            var bounds = imagePath.GetBounds();
-
-            var textPercentage = 0.03f;
-            var textWidthFraction = bounds.Range.Y * textPercentage;
-            var textHeightFraction = bounds.Range.X * textPercentage;
-
-            using var textFont = new SKFont
+                Size = labelFontSize,
+            };
+            using var angleLabelPaint = new SKPaint
             {
-                Size = Math.Max(textWidthFraction, textHeightFraction),
+                Color = angleLabelColor,
+            };
+            using var lengthLabelPaint = new SKPaint
+            {
+                Color = lengthLabelColor,
             };
 
-            var measureLinesPercentage = 0.005f;
-            var measureLinesWidhtFraction = bounds.Range.Y * measureLinesPercentage;
-            var measureLinesHeightFraction = bounds.Range.X * measureLinesPercentage;
-
-            using var measurePaint = new SKPaint
+            var pathStrokeWidth = imagePath.Diameter;
+            if (settings.FixedStrokeWidthPercentage != null)
             {
-                Color = blue,
-                StrokeWidth = Math.Max(measureLinesWidhtFraction, measureLinesHeightFraction),
+                int pathStrokeWidthPercentage = settings.FixedStrokeWidthPercentage.Value.Clamp(min: 0, max: 100);
+                var pathStrokeWidthPercent = pathStrokeWidthPercentage / 100.0f;
+                pathStrokeWidth = maxImageRange * pathStrokeWidthPercent;
+            }
+            using var basePathPaint = new SKPaint
+            {
+                Color = basePathColor,
+                StrokeWidth = pathStrokeWidth,
+                StrokeCap = SKStrokeCap.Round,
+            };
+            using var selectedPathPaint = new SKPaint
+            {
+                Color = highlightPathColor,
+                StrokeWidth = pathStrokeWidth,
+                StrokeCap = SKStrokeCap.Round,
+            };
+            using var dependentPathPaint = new SKPaint
+            {
+                Color = highlightPathColor.WithAlpha(120),
+                StrokeWidth = pathStrokeWidth,
+                StrokeCap = SKStrokeCap.Round,
+            };
+
+            int totalDimensionsAxisPercentage = 1;
+            var totalDimensionsAxisPercent = totalDimensionsAxisPercentage / 100.0f;
+            var totalDimensionsAxisStrokeWidth = maxImageRange * totalDimensionsAxisPercent;
+            using var totalDimensionsAxisPaint = new SKPaint
+            {
+                Color = totalDimensionsAxisColor,
+                StrokeWidth = totalDimensionsAxisStrokeWidth,
+            };
+
+            using var backgroundPaint = new SKPaint
+            {
+                Color = white,
+            };
+            using var marginPaint = new SKPaint
+            {
+                Color = yellow,
+            };
+            using var markerPaint = new SKPaint
+            {
+                Color = red,
             };
 
             var rangeTolerance = 1.1f;
+            var pathHasXRange = bounds.Range.X > imagePath.Diameter * rangeTolerance;
+            var pathHasYRange = bounds.Range.Y > imagePath.Diameter * rangeTolerance;
+            var pathHasZRange = bounds.Range.Z > imagePath.Diameter * rangeTolerance;
 
-            var margin = new Margin(
-                Left: measurePaint.StrokeWidth,
-                Top: bounds.Range.Y > imagePath.Diameter * rangeTolerance ? textFont.Size + measurePaint.StrokeWidth * 2 : measurePaint.StrokeWidth,
-                Right: bounds.Range.Y > imagePath.Diameter * rangeTolerance ? measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth,
-                Bottom: bounds.Range.X > imagePath.Diameter * rangeTolerance ? textFont.Size + measurePaint.StrokeWidth * 6 : measurePaint.StrokeWidth
-                );
+            var baseMargin = totalDimensionsAxisPaint.StrokeWidth;
+            var topMarginWithAxis = labelFont.Size + totalDimensionsAxisPaint.StrokeWidth * 2;
+            var rightMarginWithAxis = totalDimensionsAxisPaint.StrokeWidth * 6;
+            var bottomMarginWithAxis = labelFont.Size + totalDimensionsAxisPaint.StrokeWidth * 6;
+
+            var defaultMargin = new Margin(
+                    Left: baseMargin,
+                    Top: baseMargin,
+                    Right: baseMargin,
+                    Bottom: baseMargin
+                    );
+
+            var margin = settings.DisplayMeasurements ?
+                settings.DisplayTotalDimensions switch
+                {
+                    DisplayTotalDimensions.Always => new Margin(
+                        Left: baseMargin,
+                        Top: topMarginWithAxis,
+                        Right: rightMarginWithAxis,
+                        Bottom: bottomMarginWithAxis
+                        ),
+                    DisplayTotalDimensions.Auto => new Margin(
+                        Left: baseMargin,
+                        Top: pathHasYRange ? topMarginWithAxis : baseMargin,
+                        Right: pathHasYRange ? rightMarginWithAxis : baseMargin,
+                        Bottom: pathHasXRange ? bottomMarginWithAxis : baseMargin
+                        ),
+                    DisplayTotalDimensions.Never => defaultMargin,
+                    _ => defaultMargin
+                } : defaultMargin; //No measurements means no special margin, as DisplayTotalDimensions mode is irrelevant
 
             var canvasRect = new SKRect(0, 0, bounds.Range.X + margin.Left + margin.Right, bounds.Range.Y + margin.Top + margin.Bottom);
 
@@ -68,41 +175,6 @@ namespace PathToSVG
             {
                 using (var canvas = SKSvgCanvas.Create(canvasRect, stream))
                 {
-                    using var backgroundPaint = new SKPaint
-                    {
-                        Color = white,
-                    };
-
-                    using var marginPaint = new SKPaint
-                    {
-                        Color = white,
-                    };
-
-                    using var basePathPaint = new SKPaint
-                    {
-                        Color = blueishGrey,
-                        StrokeWidth = imagePath.Diameter,
-                        StrokeCap = SKStrokeCap.Round,
-                    };
-
-                    using var dependentPathPaint = new SKPaint
-                    {
-                        Color = redTransparent,
-                        StrokeWidth = imagePath.Diameter,
-                        StrokeCap = SKStrokeCap.Round,
-                    };
-
-                    using var selectedPathPaint = new SKPaint
-                    {
-                        Color = red,
-                        StrokeWidth = imagePath.Diameter,
-                        StrokeCap = SKStrokeCap.Round,
-                    };
-
-                    using var markerPaint = new SKPaint
-                    {
-                        Color = red,
-                    };
 
                     var fullWidth = margin.Left + bounds.Range.X + margin.Right;
                     var fullHeight = margin.Top + bounds.Range.Y + margin.Bottom;
@@ -192,88 +264,148 @@ namespace PathToSVG
                                     canvas.DrawCircle(pt, radius: 1, markerPaint);
                                 }
                             }
+                            else if (piece is ImageArc arc)
+                            {
+                                foreach (var outerPt in arc.ImageSampleBounds)
+                                {
+                                    var pt = outerPt.ToSKPoint(bounds, margin);
+                                    canvas.DrawCircle(pt, radius: 1, markerPaint);
+                                }
+                            }
                         }
                     }
                     #endregion
 
                     #region Draw ImagePath Labels
                     //Text labels at the end
-                    for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
+
+                    var lengthSuffix = settings.LengthUnitSuffix ?? "";
+
+                    if (settings.DisplayMeasurements)
                     {
-                        var piece = imagePath.Pieces[pieceIdx];
-                        if (piece is ImageLine line)
+                        for (int pieceIdx = 0; pieceIdx < imagePath.Pieces.Count; pieceIdx++)
                         {
-                            if (imagePath.Pieces.Count > 1)
+                            var currentPiece = imagePath.Pieces[pieceIdx];
+                            if (currentPiece is ImageLine currentLine)
                             {
-                                var imageCenter = line.ImageStart + (line.ImageEnd - line.ImageStart) * 0.5f;
-                                var lineString = line.OuterLen3D != line.StraightLen3D ? $"{line.OuterLen3D.ToString("0.#")} ({line.StraightLen3D.ToString("0.#")})" : $"{line.OuterLen3D.ToString("0.#")}";
+                                //Do not draw straight segment label if equal to total (X) length
+                                if (imagePath.Pieces.Count > 1)
+                                {
+                                    var imageCenter = currentLine.ImageStart + (currentLine.ImageEnd - currentLine.ImageStart) * 0.5f;
 
-                                var distToLeft = Math.Abs(imageCenter.X - bounds.Min.X);
-                                var distToRight = Math.Abs(imageCenter.X - bounds.Max.X);
-                                var distToCenterWidth = Math.Abs(imageCenter.X - bounds.Center.X);
+                                    var outerLengthString = (currentLine.OuterLen3D * (float)settings.MillimetresToDisplayLengthUnit).ToFormattedString(settings.DecimalSeparator, settings.FractionDigits);
+                                    var straightLengthString = (currentLine.StraightLen3D * (float)settings.MillimetresToDisplayLengthUnit).ToFormattedString(settings.DecimalSeparator, settings.FractionDigits);
 
-                                var distToTop = Math.Abs(imageCenter.Y - bounds.Max.Y);
-                                var distToBottom = Math.Abs(imageCenter.Y - bounds.Min.Y);
-                                var distToCenterHeight = Math.Abs(imageCenter.Y - bounds.Center.Y);
+                                    var straightLengthIsDifferent = currentLine.OuterLen3D != currentLine.StraightLen3D; //Note that we can do an exact comparison here, since if equal, both variables point to the same exact value
 
-                                var heightOffset = distToTop < distToCenterHeight ? textFont.Size : (distToBottom < distToCenterHeight ? 0 : textFont.Size * 0.5f);
+                                    var lineString = straightLengthIsDifferent && settings.DisplayStraightLengths ?
+                                        $"{outerLengthString}({straightLengthString}){lengthSuffix}"
+                                        : $"{outerLengthString}{lengthSuffix}";
 
-                                var textAlign = distToLeft < distToCenterWidth ? SKTextAlign.Left : (distToRight < distToCenterWidth ? SKTextAlign.Right : SKTextAlign.Center);
-                                canvas.DrawText(lineString, imageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, heightOffset), textAlign, textFont, measurePaint);
+                                    var distToLeft = Math.Abs(imageCenter.X - bounds.Min.X);
+                                    var distToRight = Math.Abs(imageCenter.X - bounds.Max.X);
+                                    var distToCenterWidth = Math.Abs(imageCenter.X - bounds.Center.X);
+
+                                    var distToTop = Math.Abs(imageCenter.Y - bounds.Max.Y);
+                                    var distToBottom = Math.Abs(imageCenter.Y - bounds.Min.Y);
+                                    var distToCenterHeight = Math.Abs(imageCenter.Y - bounds.Center.Y);
+
+                                    var textAlign = distToLeft < distToCenterWidth ? SKTextAlign.Left : (distToRight < distToCenterWidth ? SKTextAlign.Right : SKTextAlign.Center);
+                                    canvas.DrawText(lineString, imageCenter.ToSKPoint(bounds, margin), textAlign, labelFont, lengthLabelPaint);
+                                }
+
+                                if (pieceIdx < imagePath.Pieces.Count - 1)
+                                {
+                                    var nextPiece = imagePath.Pieces[pieceIdx + 1];
+                                    //If two lines directly after each other, display virtual angle label
+                                    if (nextPiece is ImageLine nextLine && nextLine.Line3D.IsValidLine3D() && currentLine.Line3D.IsValidLine3D())
+                                    {
+                                        var currentReverseDir = currentLine.Line3D.Start - currentLine.Line3D.End;
+                                        var nextDir = nextLine.Line3D.End - nextLine.Line3D.Start;
+                                        var sweepDeg = Util.AngleBetweenDeg(currentReverseDir, nextDir);
+
+                                        if (settings.HideAnglesModuloDeg == null || !sweepDeg.IsMultipleModulo(settings.HideAnglesModuloDeg.Value))
+                                        {
+                                            var currentReverseImageDir = Vector2.Normalize((currentLine.ImageStart - currentLine.ImageEnd).GetImage2DComponents());
+                                            var nextImageDir = Vector2.Normalize((nextLine.ImageEnd - nextLine.ImageStart).GetImage2DComponents());
+
+                                            var offset = (currentReverseImageDir * 0.5f + nextImageDir * 0.5f) * labelFont.Size * 3.0f;
+
+                                            var angleString = $"{sweepDeg.ToFormattedString(settings.DecimalSeparator, settings.FractionDigits)}°";
+                                            canvas.DrawText(angleString, currentLine.ImageEnd.ToSKPoint(bounds, margin) + new SKPoint(0, labelFont.Size * 0.5f) + new SKPoint(offset.X, -offset.Y), SKTextAlign.Center, labelFont, angleLabelPaint);
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        else if (piece is ImageArc arc)
-                        {
-                            var distToTop = Math.Abs(arc.ImageCenter.Y - bounds.Max.Y);
-                            var distToBottom = Math.Abs(arc.ImageCenter.Y - bounds.Min.Y);
-                            var distToCenterHeight = Math.Abs(arc.ImageCenter.Y - bounds.Center.Y);
+                            else if (currentPiece is ImageArc currentArc)
+                            {
+                                var sweepDeg = Math.Abs(currentArc.Arc3D.SweepDeg);
 
-                            var heightOffset = distToTop < distToCenterHeight ? textFont.Size : (distToBottom < distToCenterHeight ? 0 : textFont.Size * 0.5f);
-
-                            var angleString = $"{Math.Abs(arc.Arc3D.SweepDeg).ToString("0.#")}°";
-                            canvas.DrawText(angleString, arc.ImageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, heightOffset), SKTextAlign.Center, textFont, measurePaint);
+                                if (sweepDeg > 360 || settings.HideAnglesModuloDeg == null || !sweepDeg.IsMultipleModulo(settings.HideAnglesModuloDeg.Value))
+                                {
+                                    var angleString = $"{sweepDeg.ToFormattedString(settings.DecimalSeparator, settings.FractionDigits)}°";
+                                    canvas.DrawText(angleString, currentArc.ImageCenter.ToSKPoint(bounds, margin) + new SKPoint(0, labelFont.Size * 0.5f), SKTextAlign.Center, labelFont, angleLabelPaint);
+                                }
+                            }
                         }
                     }
                     #endregion
 
                     #region Draw Measurements
-                    var halfStrokeWidth = measurePaint.StrokeWidth * 0.5f;
-                    var capWidth = measurePaint.StrokeWidth * 4f;
-                    var halfCapWidth = capWidth * 0.5f;
-
-                    var xLineHeight = margin.Top + bounds.Range.Y + halfCapWidth + measurePaint.StrokeWidth;
-                    var yLineWidth = margin.Left + bounds.Range.X + halfCapWidth + measurePaint.StrokeWidth;
-
-                    if (bounds.Range.X > imagePath.Diameter * rangeTolerance)
+                    if (settings.DisplayMeasurements)
                     {
-                        var rangeXStart = new SKPoint(margin.Left, xLineHeight);
-                        var rangeXEnd = new SKPoint(margin.Left + bounds.Range.X, xLineHeight);
-                        canvas.DrawLine(rangeXStart, rangeXEnd, measurePaint);
+                        var halfStrokeWidth = totalDimensionsAxisPaint.StrokeWidth * 0.5f;
+                        var capWidth = totalDimensionsAxisPaint.StrokeWidth * 4f;
+                        var halfCapWidth = capWidth * 0.5f;
 
-                        canvas.DrawLine(rangeXStart + new SKPoint(halfStrokeWidth, halfCapWidth), rangeXStart + new SKPoint(halfStrokeWidth, -halfCapWidth), measurePaint);
-                        canvas.DrawLine(rangeXEnd + new SKPoint(-halfStrokeWidth, halfCapWidth), rangeXEnd + new SKPoint(-halfStrokeWidth, -halfCapWidth), measurePaint);
+                        var xLineHeight = margin.Top + bounds.Range.Y + halfCapWidth + totalDimensionsAxisPaint.StrokeWidth;
+                        var yLineWidth = margin.Left + bounds.Range.X + halfCapWidth + totalDimensionsAxisPaint.StrokeWidth;
 
-                        canvas.DrawText($"X: {originalBounds.Range.X.ToString("0.#")}", bounds.Range.X * 0.5f + margin.Left, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Center, textFont, measurePaint);
-                    }
+                        var displayX = settings.DisplayTotalDimensions == DisplayTotalDimensions.Always ||
+                            (settings.DisplayTotalDimensions == DisplayTotalDimensions.Auto && pathHasXRange);
 
-                    if (bounds.Range.Y > imagePath.Diameter * rangeTolerance)
-                    {
-                        var rangeYStart = new SKPoint(yLineWidth, margin.Top);
-                        var rangeYEnd = new SKPoint(yLineWidth, margin.Top + bounds.Range.Y);
-                        canvas.DrawLine(rangeYStart, rangeYEnd, measurePaint);
-                        canvas.DrawLine(rangeYStart + new SKPoint(halfCapWidth, halfStrokeWidth), rangeYStart + new SKPoint(-halfCapWidth, halfStrokeWidth), measurePaint);
-                        canvas.DrawLine(rangeYEnd + new SKPoint(halfCapWidth, -halfStrokeWidth), rangeYEnd + new SKPoint(-halfCapWidth, -halfStrokeWidth), measurePaint);
+                        var displayY = settings.DisplayTotalDimensions == DisplayTotalDimensions.Always ||
+                            (settings.DisplayTotalDimensions == DisplayTotalDimensions.Auto && pathHasYRange);
 
-                        canvas.DrawText($"Y: {originalBounds.Range.Y.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, textFont.Size + measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
-                    }
+                        var displayZ = settings.DisplayTotalDimensions == DisplayTotalDimensions.Always ||
+                            (settings.DisplayTotalDimensions == DisplayTotalDimensions.Auto && pathHasZRange);
 
-                    if (bounds.Range.Z > imagePath.Diameter * rangeTolerance)
-                    {
-                        var markerCenter = new SKPoint(yLineWidth, xLineHeight);
-                        canvas.DrawCircle(markerCenter, radius: halfCapWidth, measurePaint);
-                        canvas.DrawCircle(markerCenter, radius: halfCapWidth - measurePaint.StrokeWidth, marginPaint);
+                        if (displayX)
+                        {
+                            var rangeXStart = new SKPoint(margin.Left, xLineHeight);
+                            var rangeXEnd = new SKPoint(margin.Left + bounds.Range.X, xLineHeight);
+                            canvas.DrawLine(rangeXStart, rangeXEnd, totalDimensionsAxisPaint);
+                            canvas.DrawLine(rangeXStart + new SKPoint(halfStrokeWidth, halfCapWidth), rangeXStart + new SKPoint(halfStrokeWidth, -halfCapWidth), totalDimensionsAxisPaint);
+                            canvas.DrawLine(rangeXEnd + new SKPoint(-halfStrokeWidth, halfCapWidth), rangeXEnd + new SKPoint(-halfStrokeWidth, -halfCapWidth), totalDimensionsAxisPaint);
 
-                        canvas.DrawText($"Z: {originalBounds.Range.Z.ToString("0.#")}", fullWidth - measurePaint.StrokeWidth, fullHeight - measurePaint.StrokeWidth, SKTextAlign.Right, textFont, measurePaint);
+                            var rangeXString = (originalBounds.Range.X * (float)settings.MillimetresToDisplayLengthUnit).ToFormattedString(settings.DecimalSeparator, settings.FractionDigits);
+
+                            canvas.DrawText($"{rangeXString}{lengthSuffix}", bounds.Range.X * 0.5f + margin.Left, fullHeight - totalDimensionsAxisPaint.StrokeWidth, SKTextAlign.Center, labelFont, totalDimensionsAxisPaint);
+                        }
+
+                        if (displayY)
+                        {
+                            var rangeYStart = new SKPoint(yLineWidth, margin.Top);
+                            var rangeYEnd = new SKPoint(yLineWidth, margin.Top + bounds.Range.Y);
+                            canvas.DrawLine(rangeYStart, rangeYEnd, totalDimensionsAxisPaint);
+                            canvas.DrawLine(rangeYStart + new SKPoint(halfCapWidth, halfStrokeWidth), rangeYStart + new SKPoint(-halfCapWidth, halfStrokeWidth), totalDimensionsAxisPaint);
+                            canvas.DrawLine(rangeYEnd + new SKPoint(halfCapWidth, -halfStrokeWidth), rangeYEnd + new SKPoint(-halfCapWidth, -halfStrokeWidth), totalDimensionsAxisPaint);
+
+                            var rangeYString = (originalBounds.Range.Y * (float)settings.MillimetresToDisplayLengthUnit).ToFormattedString(settings.DecimalSeparator, settings.FractionDigits);
+
+                            canvas.DrawText($"{rangeYString}{lengthSuffix}", fullWidth - totalDimensionsAxisPaint.StrokeWidth, labelFont.Size + totalDimensionsAxisPaint.StrokeWidth, SKTextAlign.Right, labelFont, totalDimensionsAxisPaint);
+                        }
+
+                        if (displayZ)
+                        {
+                            var markerCenter = new SKPoint(yLineWidth, xLineHeight);
+                            canvas.DrawCircle(markerCenter, radius: halfCapWidth, totalDimensionsAxisPaint);
+                            canvas.DrawCircle(markerCenter, radius: halfCapWidth - totalDimensionsAxisPaint.StrokeWidth, basePathPaint);
+
+                            var rangeZString = (originalBounds.Range.Z * (float)settings.MillimetresToDisplayLengthUnit).ToFormattedString(settings.DecimalSeparator, settings.FractionDigits);
+
+                            canvas.DrawText($"{rangeZString}{lengthSuffix}", fullWidth - totalDimensionsAxisPaint.StrokeWidth, fullHeight - totalDimensionsAxisPaint.StrokeWidth, SKTextAlign.Right, labelFont, totalDimensionsAxisPaint);
+                        }
                     }
                     #endregion
                 }

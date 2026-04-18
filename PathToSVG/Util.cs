@@ -1,4 +1,5 @@
 ﻿using SkiaSharp;
+using System.Globalization;
 using System.Numerics;
 
 #nullable enable
@@ -9,6 +10,18 @@ namespace PathToSVG
     {
         //Suitable float error term
         public const float FLOAT_EPS = 1e-6f;
+
+        public static int Clamp(this int value, int min, int max)
+        {
+            return Math.Min(Math.Max(value, min), max);
+        }
+
+        public static bool IsMultipleModulo(this float value, float mode)
+        {
+            var modulo = value % mode;
+            //Return true if almost zero, or almost mode
+            return Math.Abs(modulo) < FLOAT_EPS || Math.Abs(modulo - mode) < FLOAT_EPS;
+        }
 
         public static bool NonZeroLength(this Vector3 vec) => vec.Length() > FLOAT_EPS;
 
@@ -22,6 +35,12 @@ namespace PathToSVG
         {
             var cross = Vector3.Cross(Vector3.Normalize(vec1), Vector3.Normalize(vec2));
             return cross.Length() < FLOAT_EPS;
+        }
+
+        public static float AngleBetweenDeg(Vector3 vec1, Vector3 vec2)
+        {
+            var dot = Vector3.Dot(Vector3.Normalize(vec1), Vector3.Normalize(vec2));
+            return RadToDeg(MathF.Acos(dot));
         }
 
         //Gets viewplane components of Vector3
@@ -94,6 +113,13 @@ namespace PathToSVG
         public static float DegToRad(float deg) => deg * ((float)Math.PI / 180.0f);
 
         public static float RadToDeg(float rad) => rad * (180.0f / (float)Math.PI);
+
+        public static string ToFormattedString(this float angle, string decimalSeparator, int maximumFractionDigits)
+        {
+            var format = new NumberFormatInfo { NumberDecimalSeparator = decimalSeparator };
+            var pattern = "0." + new string('#', maximumFractionDigits);
+            return angle.ToString(pattern, format);
+        }
 
         public static float GetArcWidth(float arcRadius, float arcAngleDeg)
         {
@@ -465,10 +491,11 @@ namespace PathToSVG
                         var startArcCoreRadius = Vector3.Distance(startArc.Start, startArc.Center);
                         var startArcOuterRadius = startArcCoreRadius + pathRadius;
                         var startArcWidth = GetArcWidth(startArcOuterRadius, startArc.SweepDeg);
-
                         outerLen += startArcWidth;
-                        var elongatedStart3D = line3D.Start - dir3D * startArcWidth;
-                        imageStartBounds.Add(elongatedStart3D.Project(projection));
+
+                        //Don't include this in bounds for now, as this tangent length will exceed the total dimensions of the geometry for angles greater than 90 degrees
+                        //var elongatedStart3D = line3D.Start - dir3D * startArcWidth;
+                        //imageStartBounds.Add(elongatedStart3D.Project(projection));
                     }
 
                     if (pieceIdx != path3D.Pieces.Count - 1 && path3D.Pieces[pieceIdx + 1] is Arc3D endArc)
@@ -476,10 +503,11 @@ namespace PathToSVG
                         var endArcCoreRadius = Vector3.Distance(endArc.Start, endArc.Center);
                         var endArcOuterRadius = endArcCoreRadius + pathRadius;
                         var endArcWidth = GetArcWidth(endArcOuterRadius, endArc.SweepDeg);
-
                         outerLen += endArcWidth;
-                        var elongatedEnd3D = line3D.End + dir3D * endArcWidth;
-                        imageEndBounds.Add(elongatedEnd3D.Project(projection));
+
+                        //Don't include this in bounds for now, as this tangent length will exceed the total dimensions of the geometry for angles greater than 90 degrees
+                        //var elongatedEnd3D = line3D.End + dir3D * endArcWidth;
+                        //imageEndBounds.Add(elongatedEnd3D.Project(projection));
                     }
 
                     var imageStart2D = imageStart.GetImage2DComponents();
@@ -671,7 +699,7 @@ namespace PathToSVG
             }
         }
 
-        public static ImagePath ApplyOverlapCorrection(this ImagePath inputPath)
+        public static ImagePath ApplyOverlapCorrection(this ImagePath inputPath, float shiftBy)
         {
             var MAX_SHIFT_ATTEMPTS = 10;
 
@@ -703,7 +731,7 @@ namespace PathToSVG
 
                             if (previousLines.Any(x => AreOverlapping(x, nextLine)))
                             {
-                                var shiftOffset = currentLineDir * inputPath.Diameter * 2.0f;
+                                var shiftOffset = currentLineDir * shiftBy;
 
                                 //Iteratively apply shift offset to current line
                                 modifiedLine = modifiedLine with
