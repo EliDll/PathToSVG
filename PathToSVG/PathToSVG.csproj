@@ -1,14 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PackageId>EliDll.PathToSVG</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>EliDll</Authors>
+		<Product>PathToSVG</Product>
+		<Title>PathToSVG</Title>
+		<Description>Rendering of 3D Paths to SVG, performing a viewplane-optimized orthographic 2D projection.
+Supports display of localized measurements.
+Built on SkiaSharp.</Description>
+		<Copyright>MIT license</Copyright>
+		<PackageProjectUrl>https://github.com/EliDll/PathToSVG</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/EliDll/PathToSVG</RepositoryUrl>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="3.119.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="SkiaSharp" Version="3.119.2" />
+	</ItemGroup>
 
 </Project>

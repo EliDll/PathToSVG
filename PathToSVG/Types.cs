@@ -1,59 +1,57 @@
 ﻿using System.Numerics;
 
-#nullable enable
-
 namespace PathToSVG
 {
-    record PathPiece3D(Vector3 Start, Vector3 End, bool IsSelected, bool IsDependent);
+    public record PathPiece3D(Vector3 Start, Vector3 End, bool IsSelected, bool IsDependent);
 
-    record Line3D(Vector3 Start, Vector3 End, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
+    public record Line3D(Vector3 Start, Vector3 End, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
-    record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
+    public record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
-    record Path3D(IList<PathPiece3D> Pieces, float Diameter);
+    public record Path3D(IList<PathPiece3D> Pieces, float Diameter);
 
-    record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
+    public record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
 
-    record ImagePiece();
+    public record ImagePiece();
 
-    record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
+    public record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
 
-    record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
+    public record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
 
-    record ImagePath(IList<ImagePiece> Pieces, float Diameter);
+    public record ImagePath(IList<ImagePiece> Pieces, float Diameter);
 
-    record Margin(float Left, float Top, float Right, float Bottom);
+    public record Margin(float Left, float Top, float Right, float Bottom);
 
-    record Bounds(Vector3 Min, Vector3 Max, Vector3 Range, Vector3 Center);
+    public record Bounds(Vector3 Min, Vector3 Max, Vector3 Range, Vector3 Center);
 
-    enum View
+    public enum View
     {
         Front,
         Side,
         Top
     }
 
-    enum Anchor
+    public enum Anchor
     {
         FirstLine,
         LongestLine,
         LongestCollinearGroup
     }
 
-    enum DisplayTotalDimensions
+    public enum DisplayTotalDimensions
     {
         Always,
         Auto,
         Never
     }
 
-    enum HandleOverlaps
+    public enum HandleOverlaps
     {
         Shift,
         Ignore
     }
 
-    record DisplaySettings
+    public record DisplaySettings
     {
         /// <summary>
         /// Determines if length and angle labels are displayed

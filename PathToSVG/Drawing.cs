@@ -1,12 +1,53 @@
 ﻿using SkiaSharp;
+using System.Globalization;
 using System.Numerics;
-
-#nullable enable
 
 namespace PathToSVG
 {
-    static class Drawing
+    public static class Drawing
     {
+        private static SKPoint ToSKPoint(this Vector3 pt, Bounds bounds, Margin margin)
+        {
+            var boundsX = pt.X - bounds.Min.X;
+            var boundsY = pt.Y - bounds.Min.Y;
+
+            var canvasX = margin.Left + boundsX;
+            var canvasY = (bounds.Range.Y + margin.Top) - boundsY; //y points downwards in canvas
+
+            return new SKPoint(canvasX, canvasY);
+        }
+
+        private static string ToFormattedString(this float angle, string decimalSeparator, int maximumFractionDigits)
+        {
+            var format = new NumberFormatInfo { NumberDecimalSeparator = decimalSeparator };
+            var pattern = "0." + new string('#', maximumFractionDigits);
+            return angle.ToString(pattern, format);
+        }
+
+        /// <summary>
+        /// Renders the given Path3D to SVG via a viewplane-optimized 2D projection
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="view"></param>
+        /// <param name="anchor"></param>
+        /// <param name="settings"></param>
+        /// <param name="outputPath"></param>
+        /// <returns>The fully qualified output path</returns>
+        public static string DrawToFile(Path3D path, View view, Anchor anchor, DisplaySettings settings, string outputPath)
+        {
+            var svgContent = DrawToBytes(path, view, anchor, settings);
+            File.WriteAllBytes(outputPath, svgContent);
+            return Path.GetFullPath(outputPath);
+        }
+
+        /// <summary>
+        /// Renders the given Path3D to SVG via a viewplane-optimized 2D projection
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="view"></param>
+        /// <param name="anchor"></param>
+        /// <param name="settings"></param>
+        /// <returns>The SVG file contents as bytearray</returns>
         public static byte[] DrawToBytes(Path3D path, View view, Anchor anchor, DisplaySettings settings)
         {
             var debugBounds = false;

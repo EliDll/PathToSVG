@@ -1,9 +1,8 @@
 ﻿using PathToSVG;
-using SkiaSharp;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
-
-#nullable enable
+using System.Runtime.Intrinsics.Arm;
 
 var len = 300;
 var arcRadius = 30;
@@ -84,13 +83,13 @@ Path3D testStraight = new(Pieces: [
 Diameter: 16
 );
 
-var path = testStraight;
+var path = testOverlap;
 
 var view = View.Front;
 
 var anchor = Anchor.LongestCollinearGroup;
 
-var displaySettings = new DisplaySettings
+var settings = new DisplaySettings
 {
     LengthLabelColorHEX = "#2196f3",
     AngleLabelColorHEX = "#f44336",
@@ -113,7 +112,7 @@ var displaySettings = new DisplaySettings
 var timer = new Stopwatch();
 
 timer.Start();
-var svgContent = Drawing.DrawToBytes(path, view, anchor, displaySettings);
+var svgContent = Drawing.DrawToBytes(path, view, anchor, settings);
 timer.Stop();
 
 TimeSpan timeTaken = timer.Elapsed;
