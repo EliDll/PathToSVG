@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackageId>EliDll.PathToSVG</PackageId>
-		<Version>1.0.0</Version>
+		<Version>1.0.1</Version>
 		<Authors>EliDll</Authors>
 		<Product>PathToSVG</Product>
 		<Title>PathToSVG</Title>
@@ -16,6 +16,7 @@ Built on SkiaSharp.</Description>
 		<PackageProjectUrl>https://github.com/EliDll/PathToSVG</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/EliDll/PathToSVG</RepositoryUrl>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>

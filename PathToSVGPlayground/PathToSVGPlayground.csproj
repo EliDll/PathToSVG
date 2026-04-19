@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PathToSVG\PathToSVG.csproj" />
+    <PackageReference Include="EliDll.PathToSVG" Version="1.0.0" />
   </ItemGroup>
+
+  <!--<ItemGroup>
+    <ProjectReference Include="..\PathToSVG\PathToSVG.csproj" />
+  </ItemGroup>-->
 
 </Project>
