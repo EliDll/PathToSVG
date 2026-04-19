@@ -7,12 +7,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="EliDll.PathToSVG" Version="1.0.1" />
-  </ItemGroup>
-
   <!--<ItemGroup>
-    <ProjectReference Include="..\PathToSVG\PathToSVG.csproj" />
+    <PackageReference Include="EliDll.PathToSVG" Version="1.0.2" />
   </ItemGroup>-->
+
+  <ItemGroup>
+    <ProjectReference Include="..\PathToSVG\PathToSVG.csproj" />
+  </ItemGroup>
 
 </Project>

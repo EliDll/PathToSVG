@@ -5,19 +5,27 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackageId>EliDll.PathToSVG</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>EliDll</Authors>
 		<Product>PathToSVG</Product>
 		<Title>PathToSVG</Title>
-		<Description>Rendering of 3D Paths to SVG, performing a viewplane-optimized orthographic 2D projection.
-Supports display of localized measurements.
-Built on SkiaSharp.</Description>
-		<Copyright>MIT license</Copyright>
+		<Description>
+			Rendering of 3D Paths to SVG, performing a viewplane-optimized orthographic 2D projection.
+			Supports display of localized measurements.
+			Supports multi-stage path highlighting.
+			Built on SkiaSharp.
+		</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/EliDll/PathToSVG</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/EliDll/PathToSVG</RepositoryUrl>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="docs\README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="SkiaSharp" Version="3.119.2" />

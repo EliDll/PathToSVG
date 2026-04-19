@@ -2,55 +2,155 @@
 
 namespace PathToSVG
 {
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Start"></param>
+    /// <param name="End"></param>
+    /// <param name="IsSelected"></param>
+    /// <param name="IsDependent"></param>
     public record PathPiece3D(Vector3 Start, Vector3 End, bool IsSelected, bool IsDependent);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Start"></param>
+    /// <param name="End"></param>
+    /// <param name="IsSelected"></param>
+    /// <param name="IsDependent"></param>
     public record Line3D(Vector3 Start, Vector3 End, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Start"></param>
+    /// <param name="End"></param>
+    /// <param name="Center"></param>
+    /// <param name="Axis"></param>
+    /// <param name="SweepDeg"></param>
+    /// <param name="IsSelected"></param>
+    /// <param name="IsDependent"></param>
     public record Arc3D(Vector3 Start, Vector3 End, Vector3 Center, Vector3 Axis, float SweepDeg, bool IsSelected = false, bool IsDependent = false) : PathPiece3D(Start, End, IsSelected, IsDependent);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Pieces"></param>
+    /// <param name="Diameter"></param>
     public record Path3D(IList<PathPiece3D> Pieces, float Diameter);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="AxisX"></param>
+    /// <param name="AxisY"></param>
+    /// <param name="AxisZ"></param>
     public record CoordinateSystem(Vector3 AxisX, Vector3 AxisY, Vector3 AxisZ);
 
+    /// <summary>
+    /// 
+    /// </summary>
     public record ImagePiece();
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Line3D"></param>
+    /// <param name="ImageStart"></param>
+    /// <param name="ImageEnd"></param>
+    /// <param name="ImageStartBounds"></param>
+    /// <param name="ImageEndBounds"></param>
+    /// <param name="StraightLen3D"></param>
+    /// <param name="OuterLen3D"></param>
     public record ImageLine(Line3D Line3D, Vector3 ImageStart, Vector3 ImageEnd, IList<Vector3> ImageStartBounds, IList<Vector3> ImageEndBounds, float StraightLen3D, float OuterLen3D) : ImagePiece();
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Arc3D"></param>
+    /// <param name="ImageCenter"></param>
+    /// <param name="ImageSweepSamples"></param>
+    /// <param name="ImageSampleBounds"></param>
     public record ImageArc(Arc3D Arc3D, Vector3 ImageCenter, IList<Vector3> ImageSweepSamples, IList<Vector3> ImageSampleBounds) : ImagePiece();
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Pieces"></param>
+    /// <param name="Diameter"></param>
     public record ImagePath(IList<ImagePiece> Pieces, float Diameter);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Left"></param>
+    /// <param name="Top"></param>
+    /// <param name="Right"></param>
+    /// <param name="Bottom"></param>
     public record Margin(float Left, float Top, float Right, float Bottom);
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="Min"></param>
+    /// <param name="Max"></param>
+    /// <param name="Range"></param>
+    /// <param name="Center"></param>
     public record Bounds(Vector3 Min, Vector3 Max, Vector3 Range, Vector3 Center);
 
+    /// <summary>
+    /// 
+    /// </summary>
     public enum View
     {
+        ///
         Front,
+        ///
         Side,
+        ///
         Top
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public enum Anchor
     {
+        ///
         FirstLine,
+        ///
         LongestLine,
+        ///
         LongestCollinearGroup
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public enum DisplayTotalDimensions
     {
+        ///
         Always,
+        ///
         Auto,
+        ///
         Never
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public enum HandleOverlaps
     {
+        ///
         Shift,
+        ///
         Ignore
     }
 
+    /// <summary>
+    /// Customization options for the rendered SVG image
+    /// </summary>
     public record DisplaySettings
     {
         /// <summary>
@@ -113,13 +213,19 @@ namespace PathToSVG
         public required HandleOverlaps HandleOverlaps { get; init; }
 
         /// <summary>
+        /// Specifies whether, when straight pieces are highlighted, adjacent arcs are also highlighted up to their tangent
+        /// If set to false, only the straight piece itself will be highlighted
+        /// </summary>
+        public required bool HighlightOuterDimensions { get; init; }
+
+        /// <summary>
         /// HEX Color Code (#RRGGBB) of the drawn base path
         /// </summary>
         public required string? BasePathColorHEX { get; init; }
 
         /// <summary>
         /// HEX Color Code (#RRGGBB) of the drawn highlighted path
-        /// This simultaneously affects the display of highlighted segment indices, as well as highlighted slave segment indices (with reduced opacity)
+        /// This simultaneously affects the display of highlighted segment indices, as well as highlighted slave segment indices (by blending between this and the base path color)
         /// </summary>
         public required string? HighlightPathColorHEX { get; init; }
 

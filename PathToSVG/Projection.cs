@@ -1,11 +1,15 @@
-﻿using System.Numerics;
+﻿using System.IO;
+using System.Numerics;
 
 namespace PathToSVG
 {
+    /// <summary>
+    /// Handles 3D to 2D orthographic projection
+    /// </summary>
     public static class Projection
     {
         //Returns the resulting image point as Vector3(X: viewplane right, Y: viewplane down, Z: depth from viewplane)
-        public static Vector3 Project(this Vector3 point3D, CoordinateSystem projection)
+        private static Vector3 Project(this Vector3 point3D, CoordinateSystem projection)
         {
             return new Vector3(
                 x: Vector3.Dot(point3D, projection.AxisX),
@@ -17,7 +21,7 @@ namespace PathToSVG
         //Orthonormal basis via Gram-Schmidt
         //Returns null if result is degenerate, i.e. (almost) parallel
         //Otherwise returns a normalized vector perpendicular to the specified axis
-        public static Vector3? GetPerpendicularTo(this Vector3 direction, Vector3 axis)
+        private static Vector3? GetPerpendicularTo(this Vector3 direction, Vector3 axis)
         {
             var normalizedAxis = Vector3.Normalize(axis); //just to be sure
             var normalizedDirection = Vector3.Normalize(direction); //is expected to not be normalized
@@ -32,6 +36,65 @@ namespace PathToSVG
             }
         }
 
+        private static IList<ImagePiece> GetWithOffset(this IList<ImagePiece> originalPieces, Vector3 offset)
+        {
+            IList<ImagePiece> modifiedPieces = [];
+
+            foreach (var originalPiece in originalPieces)
+            {
+                if (originalPiece is ImageLine originalLine)
+                {
+                    var newLine = originalLine with
+                    {
+                        ImageEnd = originalLine.ImageEnd + offset,
+                        ImageStart = originalLine.ImageStart + offset,
+                        ImageStartBounds = originalLine.ImageStartBounds.Select(x => x + offset).ToList(),
+                        ImageEndBounds = originalLine.ImageEndBounds.Select(x => x + offset).ToList(),
+                    };
+                    modifiedPieces.Add(newLine);
+                }
+                else if (originalPiece is ImageArc originalArc)
+                {
+                    var newArc = originalArc with
+                    {
+                        ImageCenter = originalArc.ImageCenter + offset,
+                        ImageSweepSamples = originalArc.ImageSweepSamples.Select(x => x + offset).ToList(),
+                        ImageSampleBounds = originalArc.ImageSampleBounds.Select(x => x + offset).ToList()
+                    };
+                    modifiedPieces.Add(newArc);
+                }
+            }
+
+            return modifiedPieces;
+        }
+
+        private static bool AreOverlapping(ImageLine firstLine, ImageLine secondLine)
+        {
+            var firstDir = firstLine.ImageEnd - firstLine.ImageStart;
+            var secondDir = secondLine.ImageEnd - secondLine.ImageStart;
+            if (Util.AreCollinear(firstDir, secondDir))
+            {
+                //Check if either end point of one line lies exactly within the other
+                return firstLine.ImageStart.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart)
+                    || firstLine.ImageEnd.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart)
+                    || secondLine.ImageStart.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart)
+                    || secondLine.ImageEnd.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart);
+            }
+            else
+            {
+                //Do not point in the same direction
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Derives an orthonormal coordinate basis from the given 3D path, dependent on the desired view and anchor point
+        /// </summary>
+        /// <param name="path3D"></param>
+        /// <param name="view"></param>
+        /// <param name="anchor"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
         public static CoordinateSystem GetProjection(this Path3D path3D, View view, Anchor anchor)
         {
             var worldRight = new Vector3(1, 0, 0);
@@ -339,11 +402,16 @@ namespace PathToSVG
             #endregion
         }
 
-        public static ImagePath ToImagePath(this Path3D path3D, View view, Anchor anchor, float degreesPerSample)
+        /// <summary>
+        ///  Derives a 2D ImagePath working object from the given 3D path and desired projection
+        /// </summary>
+        /// <param name="path3D"></param>
+        /// <param name="projection"></param>
+        /// <param name="degreesPerSample"></param>
+        /// <returns></returns>
+        public static ImagePath ToImagePath(this Path3D path3D, CoordinateSystem projection, int degreesPerSample)
         {
             var pathRadius = path3D.Diameter * 0.5f;
-
-            var projection = path3D.GetProjection(view, anchor);
 
             IList<ImagePiece> imagePieces = [];
 
@@ -470,6 +538,11 @@ namespace PathToSVG
             return new ImagePath(Pieces: imagePieces, Diameter: path3D.Diameter);
         }
 
+        /// <summary>
+        /// Provides the maximal extension (viewplane and depth) for the given ImagePath
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         public static Bounds GetBounds(this ImagePath path)
         {
             IList<Vector3> pathBounds = [];
@@ -516,57 +589,12 @@ namespace PathToSVG
             return new Bounds(Min: min, Max: max, Range: range, Center: center);
         }
 
-        public static IList<ImagePiece> GetWithOffset(this IList<ImagePiece> originalPieces, Vector3 offset)
-        {
-            IList<ImagePiece> modifiedPieces = [];
-
-            foreach (var originalPiece in originalPieces)
-            {
-                if (originalPiece is ImageLine originalLine)
-                {
-                    var newLine = originalLine with
-                    {
-                        ImageEnd = originalLine.ImageEnd + offset,
-                        ImageStart = originalLine.ImageStart + offset,
-                        ImageStartBounds = originalLine.ImageStartBounds.Select(x => x + offset).ToList(),
-                        ImageEndBounds = originalLine.ImageEndBounds.Select(x => x + offset).ToList(),
-                    };
-                    modifiedPieces.Add(newLine);
-                }
-                else if (originalPiece is ImageArc originalArc)
-                {
-                    var newArc = originalArc with
-                    {
-                        ImageCenter = originalArc.ImageCenter + offset,
-                        ImageSweepSamples = originalArc.ImageSweepSamples.Select(x => x + offset).ToList(),
-                        ImageSampleBounds = originalArc.ImageSampleBounds.Select(x => x + offset).ToList()
-                    };
-                    modifiedPieces.Add(newArc);
-                }
-            }
-
-            return modifiedPieces;
-        }
-
-        public static bool AreOverlapping(ImageLine firstLine, ImageLine secondLine)
-        {
-            var firstDir = firstLine.ImageEnd - firstLine.ImageStart;
-            var secondDir = secondLine.ImageEnd - secondLine.ImageStart;
-            if (Util.AreCollinear(firstDir, secondDir))
-            {
-                //Check if either end point of one line lies exactly within the other
-                return firstLine.ImageStart.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart)
-                    || firstLine.ImageEnd.LinearBetween(secondLine.ImageEnd, secondLine.ImageStart)
-                    || secondLine.ImageStart.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart)
-                    || secondLine.ImageEnd.LinearBetween(firstLine.ImageEnd, firstLine.ImageStart);
-            }
-            else
-            {
-                //Do not point in the same direction
-                return false;
-            }
-        }
-
+        /// <summary>
+        /// Attempts to resolve 3D overlaps in the given ImagePath by artifically extending prior line pieces
+        /// </summary>
+        /// <param name="inputPath"></param>
+        /// <param name="shiftBy"></param>
+        /// <returns></returns>
         public static ImagePath ApplyOverlapCorrection(this ImagePath inputPath, float shiftBy)
         {
             var MAX_SHIFT_ATTEMPTS = 10;

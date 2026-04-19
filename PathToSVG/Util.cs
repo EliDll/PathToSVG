@@ -2,7 +2,7 @@
 
 namespace PathToSVG
 {
-    public static class Util
+    internal static class Util
     {
         //Suitable float error term
         public const float FLOAT_EPS = 1e-6f;
